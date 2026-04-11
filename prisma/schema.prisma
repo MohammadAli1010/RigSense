@@ -1,0 +1,216 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum PartCategory {
+  CPU
+  MOTHERBOARD
+  GPU
+  RAM
+  STORAGE
+  PSU
+  CASE
+  COOLER
+}
+
+enum BuildStatus {
+  DRAFT
+  COMPLETED
+}
+
+enum BuildVisibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum CompatibilityStatus {
+  OK
+  WARNING
+  ERROR
+}
+
+enum BuildSlot {
+  CPU
+  MOTHERBOARD
+  GPU
+  RAM
+  STORAGE
+  PSU
+  CASE
+  COOLER
+}
+
+enum BenchmarkKind {
+  PART
+  BUILD
+}
+
+model User {
+  id           String          @id @default(cuid())
+  name         String
+  email        String          @unique
+  passwordHash String
+  bio          String?
+  imageUrl     String?
+  builds       Build[]
+  questions    ForumQuestion[]
+  answers      ForumAnswer[]
+  votes        AnswerVote[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model Part {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  category    PartCategory
+  brand       String
+  name        String
+  description String?
+  imageUrl    String?
+  priceCents  Int
+  priceSource String?      // Source of pricing data (API, SCRAPING, MANUAL, etc.)
+  lastUpdated DateTime?    // When price was last fetched/refreshed
+  specs       Json
+  buildParts  BuildPart[]
+  benchmarks  Benchmark[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([category])
+  @@index([brand])
+  @@index([priceSource])
+  @@index([lastUpdated])
+}
+
+model Build {
+  id                  String               @id @default(cuid())
+  userId              String
+  title               String
+  description         String?
+  status              BuildStatus          @default(DRAFT)
+  visibility          BuildVisibility      @default(PRIVATE)
+  estimatedWattage    Int                  @default(0)
+  totalPriceCents     Int                  @default(0)
+  compatibilityStatus CompatibilityStatus  @default(WARNING)
+  trendScore          Int                  @default(0)
+  parts               BuildPart[]
+  benchmarks          Benchmark[]
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([visibility, status, trendScore])
+}
+
+model BuildPart {
+  id        String    @id @default(cuid())
+  buildId    String
+  partId     String
+  slot       BuildSlot
+  quantity   Int       @default(1)
+  build      Build     @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  part       Part      @relation(fields: [partId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+
+  @@index([buildId])
+  @@index([partId])
+}
+
+model Guide {
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  title         String
+  excerpt       String
+  body          String
+  coverImageUrl String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Benchmark {
+  id         String        @id @default(cuid())
+  kind       BenchmarkKind
+  title      String
+  workload   String
+  score      Int?
+  avgFps     Int?
+  notes      String?
+  partId     String?
+  buildId    String?
+  part       Part?         @relation(fields: [partId], references: [id], onDelete: Cascade)
+  build      Build?        @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  createdAt  DateTime      @default(now())
+
+  @@index([kind])
+  @@index([partId])
+  @@index([buildId])
+}
+
+model ForumCategory {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  name        String
+  description String
+  questions   ForumQuestion[]
+}
+
+model ForumQuestion {
+  id             String         @id @default(cuid())
+  categoryId     String
+  authorId       String
+  title          String
+  body           String
+  solvedAnswerId String?        @unique
+  answerCount    Int            @default(0)
+  viewCount      Int            @default(0)
+  category       ForumCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  author         User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  solvedAnswer   ForumAnswer?   @relation("SolvedAnswer", fields: [solvedAnswerId], references: [id], onDelete: SetNull)
+  answers        ForumAnswer[]  @relation("QuestionAnswers")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([categoryId])
+  @@index([authorId])
+}
+
+model ForumAnswer {
+  id                String          @id @default(cuid())
+  questionId        String
+  authorId          String
+  body              String
+  voteScore         Int             @default(0)
+  isAccepted        Boolean         @default(false)
+  question          ForumQuestion   @relation("QuestionAnswers", fields: [questionId], references: [id], onDelete: Cascade)
+  author            User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  acceptedFor       ForumQuestion?  @relation("SolvedAnswer")
+  votes             AnswerVote[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([questionId])
+  @@index([authorId])
+}
+
+model AnswerVote {
+  id         String       @id @default(cuid())
+  answerId    String
+  userId      String
+  value       Int
+  answer      ForumAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([answerId, userId])
+  @@index([userId])
+}

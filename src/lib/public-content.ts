@@ -1,0 +1,579 @@
+import net from "node:net";
+
+import {
+  BenchmarkKind,
+  BuildStatus,
+  BuildVisibility,
+  PartCategory,
+  type Benchmark,
+  type Guide,
+  type Part,
+} from "@prisma/client";
+
+import {
+  benchmarks as mockBenchmarks,
+  categoryMeta,
+  getCategory,
+  getCategoryPathForCategory,
+  getFeaturedParts,
+  getGuideBySlug,
+  getPartByCategoryAndSlug,
+  getPartBySlug,
+  getPartsByCategory,
+  getRecentQuestions,
+  getTrendingBuilds,
+  guides as mockGuides,
+  publicBuilds,
+} from "@/data/mock-data";
+import { prisma } from "@/lib/db";
+
+type SpecValue = number | string | string[];
+
+export type PublicPart = {
+  slug: string;
+  category: PartCategory;
+  categoryPath: string;
+  brand: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  priceSource?: string;
+  lastUpdated?: Date;
+  specs: Record<string, SpecValue>;
+  highlights: string[];
+};
+
+export type PublicGuide = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  readTime: string;
+  tags: string[];
+  content: string[];
+};
+
+export type PublicBenchmark = {
+  id: string;
+  title: string;
+  workload: string;
+  score: number | null;
+  avgFps: number | null;
+  notes: string;
+};
+
+export type PublicBuild = {
+  id: string;
+  title: string;
+  description: string;
+  trendScore: number;
+  totalPriceCents: number;
+  estimatedWattage: number;
+  visibility: BuildVisibility;
+  status: BuildStatus;
+  compatibilityStatus: string;
+  authorName: string;
+  tags: string[];
+};
+
+export type PublicQuestionSummary = {
+  id: string;
+  title: string;
+  body: string;
+  answerCount: number;
+  viewCount: number;
+  authorName: string;
+};
+
+async function safeQuery<T>(query: () => Promise<T>) {
+  if (!(await canReachDatabase())) {
+    return null;
+  }
+
+  try {
+    return await query();
+  } catch {
+    databaseReachability = "unavailable";
+    return null;
+  }
+}
+
+let databaseReachability: "unknown" | "available" | "unavailable" = "unknown";
+
+async function canReachDatabase() {
+  if (databaseReachability === "available") {
+    return true;
+  }
+
+  if (databaseReachability === "unavailable") {
+    return false;
+  }
+
+  const url = process.env.DATABASE_URL;
+
+  if (!url) {
+    databaseReachability = "unavailable";
+    return false;
+  }
+
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    databaseReachability = "unavailable";
+    return false;
+  }
+
+  const host = parsedUrl.hostname;
+  const port = Number(parsedUrl.port || 5432);
+
+  const reachable = await new Promise<boolean>((resolve) => {
+    const socket = net.createConnection({ host, port });
+
+    const finalize = (value: boolean) => {
+      socket.destroy();
+      resolve(value);
+    };
+
+    socket.setTimeout(600);
+    socket.once("connect", () => finalize(true));
+    socket.once("timeout", () => finalize(false));
+    socket.once("error", () => finalize(false));
+  });
+
+  databaseReachability = reachable ? "available" : "unavailable";
+
+  return reachable;
+}
+
+export function normalizeSpecs(value: unknown): Record<string, SpecValue> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const result: Record<string, SpecValue> = {};
+
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry === "string" || typeof entry === "number") {
+      result[key] = entry;
+      continue;
+    }
+
+    if (Array.isArray(entry) && entry.every((item) => typeof item === "string")) {
+      result[key] = entry;
+    }
+  }
+
+  return result;
+}
+
+export function derivePartHighlights(specs: Record<string, SpecValue>) {
+  return Object.values(specs)
+    .slice(0, 3)
+    .map((value) => (Array.isArray(value) ? value.join(" / ") : String(value)));
+}
+
+function normalizePart(part: Part): PublicPart {
+  const mockPart = getPartBySlug(part.slug);
+  const specs = normalizeSpecs(part.specs);
+
+  return {
+    slug: part.slug,
+    category: part.category,
+    categoryPath: getCategoryPathForCategory(part.category) ?? "parts",
+    brand: part.brand,
+    name: part.name,
+    description: part.description ?? "No description available yet.",
+    priceCents: part.priceCents,
+    priceSource: ("priceSource" in part ? part.priceSource : null) ?? undefined,
+    lastUpdated: ("lastUpdated" in part ? part.lastUpdated : null) ?? part.updatedAt,
+    specs,
+    highlights: mockPart?.highlights ?? derivePartHighlights(specs),
+  };
+}
+
+export function estimateReadTime(text: string) {
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(1, Math.ceil(wordCount / 220));
+
+  return `${minutes} min read`;
+}
+
+function normalizeGuide(guide: Guide): PublicGuide {
+  const mockGuide = getGuideBySlug(guide.slug);
+  const paragraphs = guide.body.split(/\n\n+/).filter(Boolean);
+
+  return {
+    slug: guide.slug,
+    title: guide.title,
+    excerpt: guide.excerpt,
+    readTime: mockGuide?.readTime ?? estimateReadTime(guide.body),
+    tags: mockGuide?.tags ?? [],
+    content: mockGuide?.content ?? paragraphs,
+  };
+}
+
+function normalizeBenchmark(benchmark: Benchmark): PublicBenchmark {
+  return {
+    id: benchmark.id,
+    title: benchmark.title,
+    workload: benchmark.workload,
+    score: benchmark.score,
+    avgFps: benchmark.avgFps,
+    notes: benchmark.notes ?? "",
+  };
+}
+
+function normalizeBenchmarkRow(benchmark: {
+  id: string;
+  title: string;
+  workload: string;
+  score: number | null;
+  avgFps: number | null;
+  notes: string;
+}): PublicBenchmark {
+  return {
+    id: benchmark.id,
+    title: benchmark.title,
+    workload: benchmark.workload,
+    score: benchmark.score,
+    avgFps: benchmark.avgFps,
+    notes: benchmark.notes,
+  };
+}
+
+function deriveBuildTags(build: {
+  id: string;
+  compatibilityStatus: string;
+  estimatedWattage: number;
+}) {
+  const mockBuild = publicBuilds.find((item) => item.id === build.id);
+
+  if (mockBuild) {
+    return mockBuild.tags;
+  }
+
+  return [build.compatibilityStatus, `${build.estimatedWattage}W`, "Community build"];
+}
+
+export async function getPartsOverviewData() {
+  const dbParts = await safeQuery(() =>
+    prisma.part.findMany({
+      orderBy: [{ category: "asc" }, { name: "asc" }],
+    }),
+  );
+
+  if (!dbParts || dbParts.length === 0) {
+    return {
+      categories: categoryMeta.map((category) => ({
+        ...category,
+        count: getPartsByCategory(category.path).length,
+      })),
+      featuredParts: getFeaturedParts(),
+    };
+  }
+
+  const normalizedParts = dbParts.map(normalizePart);
+  const featuredParts = normalizedParts.filter((part) => getPartBySlug(part.slug)?.featured);
+
+  return {
+    categories: categoryMeta.map((category) => ({
+      ...category,
+      count: normalizedParts.filter((part) => part.category === category.category).length,
+    })),
+    featuredParts: (featuredParts.length > 0 ? featuredParts : normalizedParts).slice(0, 8),
+  };
+}
+
+export async function getPartCategoryData(categoryPath: string) {
+  const categoryInfo = getCategory(categoryPath);
+
+  if (!categoryInfo) {
+    return null;
+  }
+
+  const dbParts = await safeQuery(() =>
+    prisma.part.findMany({
+      where: {
+        category: categoryInfo.category,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    }),
+  );
+
+  return {
+    categoryInfo,
+    parts:
+      dbParts && dbParts.length > 0
+        ? dbParts.map(normalizePart)
+        : getPartsByCategory(categoryPath),
+  };
+}
+
+export async function getPartDetailData(categoryPath: string, slug: string) {
+  const categoryInfo = getCategory(categoryPath);
+
+  if (!categoryInfo) {
+    return null;
+  }
+
+  const dbPart = await safeQuery(() =>
+    prisma.part.findUnique({
+      where: {
+        slug,
+      },
+    }),
+  );
+
+  if (dbPart && dbPart.category === categoryInfo.category) {
+    const [relatedParts, relatedBenchmarks] = await Promise.all([
+      safeQuery(() =>
+        prisma.part.findMany({
+          where: {
+            category: dbPart.category,
+            slug: {
+              not: slug,
+            },
+          },
+          orderBy: {
+            name: "asc",
+          },
+          take: 4,
+        }),
+      ),
+      safeQuery(() =>
+        prisma.benchmark.findMany({
+          where: {
+            partId: dbPart.id,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        }),
+      ),
+    ]);
+
+    return {
+      categoryInfo,
+      part: normalizePart(dbPart),
+      relatedParts:
+        relatedParts && relatedParts.length > 0
+          ? relatedParts.map(normalizePart)
+          : getPartsByCategory(categoryPath).filter((part) => part.slug !== slug),
+      benchmarks:
+        relatedBenchmarks && relatedBenchmarks.length > 0
+          ? relatedBenchmarks.map(normalizeBenchmark)
+          : mockBenchmarks
+              .filter((benchmark) => benchmark.partSlug === slug)
+              .map((benchmark) => ({
+                id: benchmark.id,
+                title: benchmark.title,
+                workload: benchmark.workload,
+                score: benchmark.score ?? null,
+                avgFps: benchmark.avgFps ?? null,
+                notes: benchmark.notes,
+              })),
+    };
+  }
+
+  const fallbackPart = getPartByCategoryAndSlug(categoryPath, slug);
+
+  if (!fallbackPart) {
+    return null;
+  }
+
+  return {
+    categoryInfo,
+    part: fallbackPart,
+    relatedParts: getPartsByCategory(categoryPath).filter((part) => part.slug !== slug),
+    benchmarks: mockBenchmarks
+      .filter((benchmark) => benchmark.partSlug === slug)
+      .map((benchmark) => ({
+        id: benchmark.id,
+        title: benchmark.title,
+        workload: benchmark.workload,
+        score: benchmark.score ?? null,
+        avgFps: benchmark.avgFps ?? null,
+        notes: benchmark.notes,
+      })),
+  };
+}
+
+export async function getGuidesOverviewData() {
+  const dbGuides = await safeQuery(() =>
+    prisma.guide.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+  );
+
+  return dbGuides && dbGuides.length > 0 ? dbGuides.map(normalizeGuide) : mockGuides;
+}
+
+export async function getGuideDetailData(slug: string) {
+  const dbGuide = await safeQuery(() =>
+    prisma.guide.findUnique({
+      where: {
+        slug,
+      },
+    }),
+  );
+
+  if (dbGuide) {
+    return normalizeGuide(dbGuide);
+  }
+
+  return getGuideBySlug(slug) ?? null;
+}
+
+export async function getBenchmarksOverviewData() {
+  const dbBenchmarks = await safeQuery(() =>
+    prisma.benchmark.findMany({
+      orderBy: [{ kind: "asc" }, { createdAt: "desc" }],
+    }),
+  );
+
+  const rows =
+    dbBenchmarks && dbBenchmarks.length > 0
+      ? dbBenchmarks
+      : mockBenchmarks.map((benchmark) => ({
+          id: benchmark.id,
+          kind: benchmark.kind,
+          title: benchmark.title,
+          workload: benchmark.workload,
+          score: benchmark.score ?? null,
+          avgFps: benchmark.avgFps ?? null,
+          notes: benchmark.notes,
+        }));
+
+  return {
+    partBenchmarks: rows
+      .filter((benchmark) => benchmark.kind === BenchmarkKind.PART)
+      .map((benchmark) =>
+        "createdAt" in benchmark ? normalizeBenchmark(benchmark) : normalizeBenchmarkRow(benchmark),
+      ),
+    buildBenchmarks: rows
+      .filter((benchmark) => benchmark.kind === BenchmarkKind.BUILD)
+      .map((benchmark) =>
+        "createdAt" in benchmark ? normalizeBenchmark(benchmark) : normalizeBenchmarkRow(benchmark),
+      ),
+  };
+}
+
+export async function getTrendingBuildsOverviewData() {
+  const dbBuilds = await safeQuery(() =>
+    prisma.build.findMany({
+      where: {
+        visibility: BuildVisibility.PUBLIC,
+        status: BuildStatus.COMPLETED,
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        trendScore: "desc",
+      },
+    }),
+  );
+
+  if (!dbBuilds || dbBuilds.length === 0) {
+    return getTrendingBuilds();
+  }
+
+  return dbBuilds.map((build) => ({
+    id: build.id,
+    title: build.title,
+    description: build.description ?? "No build notes added yet.",
+    trendScore: build.trendScore,
+    totalPriceCents: build.totalPriceCents,
+    estimatedWattage: build.estimatedWattage,
+    visibility: build.visibility,
+    status: build.status,
+    compatibilityStatus: build.compatibilityStatus,
+    authorName: build.user.name,
+    tags: deriveBuildTags(build),
+  }));
+}
+
+export async function getHomePageData() {
+  const [partsOverview, guidesOverview, trendingBuilds, dbQuestions, counts] = await Promise.all([
+    getPartsOverviewData(),
+    getGuidesOverviewData(),
+    getTrendingBuildsOverviewData(),
+    safeQuery(() =>
+      prisma.forumQuestion.findMany({
+        include: {
+          author: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 3,
+      }),
+    ),
+    safeQuery(async () => {
+      const [partCount, guideCount, publicBuildCount, questionCount] = await prisma.$transaction([
+        prisma.part.count(),
+        prisma.guide.count(),
+        prisma.build.count({
+          where: {
+            visibility: BuildVisibility.PUBLIC,
+            status: BuildStatus.COMPLETED,
+          },
+        }),
+        prisma.forumQuestion.count(),
+      ]);
+
+      return { partCount, guideCount, publicBuildCount, questionCount };
+    }),
+  ]);
+
+  return {
+    categoryCards: partsOverview.categories,
+    featuredParts: partsOverview.featuredParts.slice(0, 4),
+    guides: guidesOverview.slice(0, 2),
+    trendingBuilds: trendingBuilds.slice(0, 2),
+    recentQuestions:
+      dbQuestions && dbQuestions.length > 0
+        ? dbQuestions.map((question) => ({
+            id: question.id,
+            title: question.title,
+            body: question.body,
+            answerCount: question.answerCount,
+            viewCount: question.viewCount,
+            authorName: question.author.name,
+          }))
+        : getRecentQuestions().slice(0, 3).map((question) => ({
+            id: question.id,
+            title: question.title,
+            body: question.body,
+            answerCount: question.answers.length,
+            viewCount: question.viewCount,
+            authorName: question.authorName,
+          })),
+    stats: counts
+      ? [
+          { label: "Seeded parts", value: String(counts.partCount) },
+          { label: "Guides", value: String(counts.guideCount) },
+          { label: "Public builds", value: String(counts.publicBuildCount) },
+          { label: "Forum questions", value: String(counts.questionCount) },
+        ]
+      : [
+          { label: "Seeded parts", value: String(partsOverview.categories.reduce((sum, item) => sum + item.count, 0)) },
+          { label: "Guides", value: String(guidesOverview.length) },
+          { label: "Public builds", value: String(trendingBuilds.length) },
+          { label: "Forum questions", value: String(getRecentQuestions().length) },
+        ],
+  };
+}
