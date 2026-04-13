@@ -3,8 +3,13 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import {
+  createAnswer,
+  createQuestion,
+  markSolvedAnswer,
+  voteAnswer,
+} from "@/services/forum/service";
 
 const questionSchema = z.object({
   title: z.string().trim().min(8).max(120),
@@ -51,26 +56,18 @@ export async function createQuestionAction(formData: FormData) {
     redirectToCategory(categorySlug, "question-invalid");
   }
 
-  const category = await prisma.forumCategory.findUnique({
-    where: {
-      slug: categorySlug,
-    },
+  const result = await createQuestion({
+    authorId: user.id,
+    categorySlug,
+    title: parsed.data.title,
+    body: parsed.data.body,
   });
 
-  if (!category) {
+  if (result.status === "seed-forum-required") {
     redirectToCategory(categorySlug, "seed-forum-required");
   }
 
-  const question = await prisma.forumQuestion.create({
-    data: {
-      categoryId: category.id,
-      authorId: user.id,
-      title: parsed.data.title,
-      body: parsed.data.body,
-    },
-  });
-
-  redirectToQuestion(question.id, "question-posted");
+  redirectToQuestion(result.questionId, "question-posted");
 }
 
 export async function createAnswerAction(formData: FormData) {
@@ -88,37 +85,17 @@ export async function createAnswerAction(formData: FormData) {
     redirectToQuestion(questionId, "answer-invalid");
   }
 
-  const question = await prisma.forumQuestion.findUnique({
-    where: {
-      id: questionId,
-    },
+  const result = await createAnswer({
+    authorId: user.id,
+    questionId,
+    body: parsed.data.body,
   });
 
-  if (!question) {
+  if (result.status === "question-not-found") {
     redirect("/forum");
   }
 
-  await prisma.$transaction([
-    prisma.forumAnswer.create({
-      data: {
-        questionId,
-        authorId: user.id,
-        body: parsed.data.body,
-      },
-    }),
-    prisma.forumQuestion.update({
-      where: {
-        id: questionId,
-      },
-      data: {
-        answerCount: {
-          increment: 1,
-        },
-      },
-    }),
-  ]);
-
-  redirectToQuestion(questionId, "answer-posted");
+  redirectToQuestion(result.questionId, "answer-posted");
 }
 
 export async function voteAnswerAction(formData: FormData) {
@@ -131,74 +108,18 @@ export async function voteAnswerAction(formData: FormData) {
     redirect("/forum");
   }
 
-  const answer = await prisma.forumAnswer.findUnique({
-    where: {
-      id: answerId,
-    },
+  const result = await voteAnswer({
+    userId: user.id,
+    questionId,
+    answerId,
+    value: value as 1 | -1,
   });
 
-  if (!answer || answer.questionId !== questionId) {
+  if (result.status === "question-not-found") {
     redirectToQuestion(questionId);
   }
 
-  const existingVote = await prisma.answerVote.findUnique({
-    where: {
-      answerId_userId: {
-        answerId,
-        userId: user.id,
-      },
-    },
-  });
-
-  let delta = value;
-
-  if (!existingVote) {
-    await prisma.answerVote.create({
-      data: {
-        answerId,
-        userId: user.id,
-        value,
-      },
-    });
-  } else if (existingVote.value === value) {
-    delta = -value;
-
-    await prisma.answerVote.delete({
-      where: {
-        answerId_userId: {
-          answerId,
-          userId: user.id,
-        },
-      },
-    });
-  } else {
-    delta = value - existingVote.value;
-
-    await prisma.answerVote.update({
-      where: {
-        answerId_userId: {
-          answerId,
-          userId: user.id,
-        },
-      },
-      data: {
-        value,
-      },
-    });
-  }
-
-  await prisma.forumAnswer.update({
-    where: {
-      id: answerId,
-    },
-    data: {
-      voteScore: {
-        increment: delta,
-      },
-    },
-  });
-
-  redirectToQuestion(questionId);
+  redirectToQuestion(result.questionId);
 }
 
 export async function markSolvedAnswerAction(formData: FormData) {
@@ -210,56 +131,19 @@ export async function markSolvedAnswerAction(formData: FormData) {
     redirect("/forum");
   }
 
-  const question = await prisma.forumQuestion.findUnique({
-    where: {
-      id: questionId,
-    },
+  const result = await markSolvedAnswer({
+    userId: user.id,
+    questionId,
+    answerId,
   });
 
-  if (!question) {
+  if (result.status === "question-not-found") {
     redirect("/forum");
   }
 
-  if (question.authorId !== user.id) {
+  if (result.status === "forbidden") {
     redirectToQuestion(questionId);
   }
 
-  const answer = await prisma.forumAnswer.findUnique({
-    where: {
-      id: answerId,
-    },
-  });
-
-  if (!answer || answer.questionId !== questionId) {
-    redirectToQuestion(questionId);
-  }
-
-  await prisma.$transaction([
-    prisma.forumAnswer.updateMany({
-      where: {
-        questionId,
-      },
-      data: {
-        isAccepted: false,
-      },
-    }),
-    prisma.forumAnswer.update({
-      where: {
-        id: answerId,
-      },
-      data: {
-        isAccepted: true,
-      },
-    }),
-    prisma.forumQuestion.update({
-      where: {
-        id: questionId,
-      },
-      data: {
-        solvedAnswerId: answerId,
-      },
-    }),
-  ]);
-
-  redirectToQuestion(questionId, "solved-marked");
+  redirectToQuestion(result.questionId, "solved-marked");
 }

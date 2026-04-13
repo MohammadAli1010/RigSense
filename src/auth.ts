@@ -1,11 +1,12 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
 
-import { prisma } from "@/lib/db";
+import { env } from "@/lib/env";
 import { loginSchema } from "@/lib/validators";
+import { authenticateUserByPassword } from "@/services/auth/service";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: env.AUTH_SECRET,
   session: {
     strategy: "jwt",
   },
@@ -31,30 +32,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: parsed.data.email,
-          },
-        });
+        const user = await authenticateUserByPassword(parsed.data.email, parsed.data.password);
 
         if (!user) {
           return null;
         }
 
-        const passwordMatches = await compare(
-          parsed.data.password,
-          user.passwordHash,
-        );
-
-        if (!passwordMatches) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        };
+        return user;
       },
     }),
   ],

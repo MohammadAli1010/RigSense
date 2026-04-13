@@ -1,5 +1,3 @@
-import net from "node:net";
-
 import {
   BenchmarkKind,
   BuildStatus,
@@ -25,6 +23,7 @@ import {
   guides as mockGuides,
   publicBuilds,
 } from "@/data/mock-data";
+import { safeDatabaseQuery } from "@/lib/database-reachability";
 import { prisma } from "@/lib/db";
 
 type SpecValue = number | string | string[];
@@ -85,65 +84,9 @@ export type PublicQuestionSummary = {
 };
 
 async function safeQuery<T>(query: () => Promise<T>) {
-  if (!(await canReachDatabase())) {
-    return null;
-  }
-
-  try {
-    return await query();
-  } catch {
-    databaseReachability = "unavailable";
-    return null;
-  }
-}
-
-let databaseReachability: "unknown" | "available" | "unavailable" = "unknown";
-
-async function canReachDatabase() {
-  if (databaseReachability === "available") {
-    return true;
-  }
-
-  if (databaseReachability === "unavailable") {
-    return false;
-  }
-
-  const url = process.env.DATABASE_URL;
-
-  if (!url) {
-    databaseReachability = "unavailable";
-    return false;
-  }
-
-  let parsedUrl: URL;
-
-  try {
-    parsedUrl = new URL(url);
-  } catch {
-    databaseReachability = "unavailable";
-    return false;
-  }
-
-  const host = parsedUrl.hostname;
-  const port = Number(parsedUrl.port || 5432);
-
-  const reachable = await new Promise<boolean>((resolve) => {
-    const socket = net.createConnection({ host, port });
-
-    const finalize = (value: boolean) => {
-      socket.destroy();
-      resolve(value);
-    };
-
-    socket.setTimeout(600);
-    socket.once("connect", () => finalize(true));
-    socket.once("timeout", () => finalize(false));
-    socket.once("error", () => finalize(false));
+  return safeDatabaseQuery(query, {
+    label: "public-content",
   });
-
-  databaseReachability = reachable ? "available" : "unavailable";
-
-  return reachable;
 }
 
 export function normalizeSpecs(value: unknown): Record<string, SpecValue> {

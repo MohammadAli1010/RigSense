@@ -1,16 +1,15 @@
 "use server";
 
-import { hash } from "bcryptjs";
 import { AuthError } from "next-auth";
 
 import { signIn, signOut } from "@/auth";
-import { prisma } from "@/lib/db";
 import {
   getFieldErrors,
   type AuthActionState,
   loginSchema,
   registerSchema,
 } from "@/lib/validators";
+import { registerUserAccount } from "@/services/auth/service";
 
 export async function loginAction(
   _previousState: AuthActionState,
@@ -62,29 +61,15 @@ export async function registerAction(
     };
   }
 
-  const existingUser = await prisma.user.findUnique({
-    where: {
-      email: parsed.data.email,
-    },
-  });
+  const registration = await registerUserAccount(parsed.data);
 
-  if (existingUser) {
+  if (registration.status === "email-taken") {
     return {
       fieldErrors: {
         email: ["An account already exists for that email address."],
       },
     };
   }
-
-  const passwordHash = await hash(parsed.data.password, 12);
-
-  await prisma.user.create({
-    data: {
-      name: parsed.data.name,
-      email: parsed.data.email,
-      passwordHash,
-    },
-  });
 
   await signIn("credentials", {
     email: parsed.data.email,

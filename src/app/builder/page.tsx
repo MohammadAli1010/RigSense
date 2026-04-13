@@ -1,8 +1,7 @@
 import { BuilderWorkbench } from "@/components/builder/builder-workbench";
 import { parts, publicBuilds } from "@/data/mock-data";
-import { buildPartsToSelections } from "@/lib/build-editor";
-import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { getOwnedBuildDraft } from "@/services/builds/service";
 import { redirect } from "next/navigation";
 
 type BuilderPageProps = {
@@ -16,33 +15,7 @@ export default async function BuilderPage({ searchParams }: BuilderPageProps) {
   const user = await requireUser();
   const { buildId, status } = await searchParams;
 
-  const draft = buildId
-    ? await prisma.build.findUnique({
-        where: {
-          id: buildId,
-        },
-        include: {
-          parts: {
-            include: {
-              part: true,
-            },
-            orderBy: {
-              createdAt: "asc",
-            },
-          },
-        },
-      })
-    : null;
-
-  const initialDraft =
-    draft && draft.userId === user.id
-      ? {
-          id: draft.id,
-          title: draft.title,
-          description: draft.description ?? "",
-          selections: buildPartsToSelections(draft.parts),
-        }
-      : undefined;
+  const initialDraft = buildId ? await getOwnedBuildDraft(buildId, user.id) : null;
 
   if (buildId && !initialDraft) {
     redirect("/builds");
@@ -52,7 +25,7 @@ export default async function BuilderPage({ searchParams }: BuilderPageProps) {
     <BuilderWorkbench
       parts={parts}
       presets={publicBuilds.slice(0, 2)}
-      initialDraft={initialDraft}
+      initialDraft={initialDraft ?? undefined}
       status={status}
     />
   );

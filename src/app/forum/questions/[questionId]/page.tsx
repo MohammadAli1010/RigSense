@@ -8,7 +8,9 @@ import {
 } from "@/actions/forum";
 import { auth } from "@/auth";
 import { getForumQuestionById } from "@/data/mock-data";
+import { safeDatabaseQuery } from "@/lib/database-reachability";
 import { prisma } from "@/lib/db";
+import { sortAnswersByAcceptanceAndScore } from "@/services/forum/service";
 
 type ForumQuestionPageProps = {
   params: Promise<{
@@ -41,33 +43,39 @@ export default async function ForumQuestionPage({
   const { questionId } = await params;
   const { status } = await searchParams;
   const session = await auth();
-  const dbQuestion = await prisma.forumQuestion.findUnique({
-    where: {
-      id: questionId,
-    },
-    include: {
-      category: true,
-      author: {
-        select: {
-          id: true,
-          name: true,
+  const dbQuestion = await safeDatabaseQuery(
+    () =>
+      prisma.forumQuestion.findUnique({
+        where: {
+          id: questionId,
         },
-      },
-      answers: {
         include: {
+          category: true,
           author: {
             select: {
               id: true,
               name: true,
             },
           },
+          answers: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
         },
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
+      }),
+    {
+      label: `forum-question-${questionId}`,
     },
-  });
+  );
   const fallbackQuestion = dbQuestion ? null : getForumQuestionById(questionId);
   const question = dbQuestion ?? fallbackQuestion;
 
@@ -75,28 +83,15 @@ export default async function ForumQuestionPage({
     notFound();
   }
 
-  const sortAnswers = <T extends { isAccepted: boolean; voteScore: number }>(items: T[]) =>
-    [...items].sort((left, right) => {
-      if (left.isAccepted && !right.isAccepted) {
-        return -1;
-      }
-
-      if (!left.isAccepted && right.isAccepted) {
-        return 1;
-      }
-
-      return right.voteScore - left.voteScore;
-    });
-
   const answers = dbQuestion
-    ? sortAnswers(dbQuestion.answers).map((answer) => ({
+    ? sortAnswersByAcceptanceAndScore(dbQuestion.answers).map((answer) => ({
         id: answer.id,
         body: answer.body,
         voteScore: answer.voteScore,
         isAccepted: answer.isAccepted,
         authorName: answer.author.name,
       }))
-    : sortAnswers(fallbackQuestion!.answers).map((answer) => ({
+    : sortAnswersByAcceptanceAndScore(fallbackQuestion!.answers).map((answer) => ({
         id: answer.id,
         body: answer.body,
         voteScore: answer.voteScore,
@@ -110,7 +105,7 @@ export default async function ForumQuestionPage({
     : fallbackQuestion?.authorName ?? "Unknown author";
   const backHref = dbQuestion ? `/forum/${dbQuestion.category.slug}` : "/forum";
   const backLabel = dbQuestion ? `Back to ${dbQuestion.category.name}` : "Back to forum";
-  const answerCount = dbQuestion ? dbQuestion.answerCount : question.answers.length;
+  const answerCount = dbQuestion ? dbQuestion.answerCount : fallbackQuestion!.answers.length;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-16 lg:py-24">

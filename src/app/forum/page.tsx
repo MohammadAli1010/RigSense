@@ -2,28 +2,43 @@ import Link from "next/link";
 
 import { auth } from "@/auth";
 import { forumCategories, getRecentQuestions } from "@/data/mock-data";
+import { safeDatabaseQuery } from "@/lib/database-reachability";
 import { prisma } from "@/lib/db";
 
 export default async function ForumPage() {
   const session = await auth();
-  const categories = await prisma.forumCategory.findMany({
-    orderBy: {
-      name: "asc",
-    },
-  });
-  const recentQuestions = await prisma.forumQuestion.findMany({
-    include: {
-      author: {
-        select: {
-          name: true,
-        },
+  const categories =
+    (await safeDatabaseQuery(
+      () =>
+        prisma.forumCategory.findMany({
+          orderBy: {
+            name: "asc",
+          },
+        }),
+      {
+        label: "forum-home-categories",
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 6,
-  });
+    )) ?? [];
+  const recentQuestions =
+    (await safeDatabaseQuery(
+      () =>
+        prisma.forumQuestion.findMany({
+          include: {
+            author: {
+              select: {
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 6,
+        }),
+      {
+        label: "forum-home-questions",
+      },
+    )) ?? [];
 
   const categoryList = categories.length > 0 ? categories : forumCategories;
   const questionList =

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createQuestionAction } from "@/actions/forum";
 import { auth } from "@/auth";
 import { getForumCategoryBySlug, getQuestionsByCategory } from "@/data/mock-data";
+import { safeDatabaseQuery } from "@/lib/database-reachability";
 import { prisma } from "@/lib/db";
 
 type ForumCategoryPageProps = {
@@ -33,25 +34,31 @@ export default async function ForumCategoryPage({
   const { category } = await params;
   const { status } = await searchParams;
   const session = await auth();
-  const dbCategory = await prisma.forumCategory.findUnique({
-    where: {
-      slug: category,
-    },
-    include: {
-      questions: {
+  const dbCategory = await safeDatabaseQuery(
+    () =>
+      prisma.forumCategory.findUnique({
+        where: {
+          slug: category,
+        },
         include: {
-          author: {
-            select: {
-              name: true,
+          questions: {
+            include: {
+              author: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
             },
           },
         },
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
+      }),
+    {
+      label: `forum-category-${category}`,
     },
-  });
+  );
   const forumCategory = dbCategory ?? getForumCategoryBySlug(category);
 
   if (!forumCategory) {

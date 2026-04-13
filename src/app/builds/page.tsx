@@ -1,30 +1,13 @@
 import Link from "next/link";
 
 import { getCategoryPathForCategory } from "@/data/mock-data";
-import { prisma } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
 import { requireUser } from "@/lib/session";
+import { listBuildsForUser } from "@/services/builds/service";
 
 export default async function BuildsPage() {
   const user = await requireUser();
-  const builds = await prisma.build.findMany({
-    where: {
-      userId: user.id,
-    },
-    include: {
-      parts: {
-        include: {
-          part: true,
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-  });
+  const builds = await listBuildsForUser(user.id);
   const drafts = builds.filter((build) => build.status === "DRAFT");
   const completed = builds.filter((build) => build.status === "COMPLETED");
 

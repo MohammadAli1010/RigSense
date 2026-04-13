@@ -4,6 +4,8 @@ RigSense is a custom PC building platform focused on part discovery, private bui
 
 The current codebase includes the foundational app shell, credentials-based auth, Prisma schema, protected account routes, and seeded public pages for the catalog, guides, benchmarks, trending builds, and forum.
 
+Milestone 1 foundation hardening is now in place with validated runtime env access, extracted auth/build/forum services, a background job foundation, and service-level tests for core mutation flows.
+
 ## Stack
 
 - Next.js 16 App Router
@@ -130,6 +132,7 @@ rigsense123
 - `npm run test` - run unit tests
 - `npm run test:watch` - run unit tests in watch mode
 - `npm run typecheck` - run TypeScript checks
+- `npm run jobs:run -- foundation.health-check` - enqueue and run the foundation health-check job
 - `npm run db:generate` - generate Prisma client
 - `npm run db:migrate` - run Prisma migrations locally
 - `npm run db:seed` - run the Prisma seed script
@@ -182,6 +185,9 @@ compose.yaml
 - Guides and forum pages are intentionally public.
 - Forum question detail uses `/forum/questions/[questionId]` to avoid a route collision with `/forum/[category]`.
 - Public discovery pages prefer Prisma-backed content and fall back to `src/data/mock-data.ts` when the database is unavailable.
+- Core mutation logic now lives in `src/services/` so server actions stay thin and reusable.
+- Runtime env validation lives in `src/lib/env.ts` and is loaded by server-side infra modules.
+- Background jobs use the `BackgroundJob` Prisma model and the registry/service under `src/lib/jobs/`.
 
 ## Phase 2 Ideas
 

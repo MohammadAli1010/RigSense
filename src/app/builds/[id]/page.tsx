@@ -9,6 +9,7 @@ import {
   getBuildParts,
   getCategoryPathForCategory,
 } from "@/data/mock-data";
+import { safeDatabaseQuery } from "@/lib/database-reachability";
 import { prisma } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
 
@@ -41,27 +42,33 @@ export default async function BuildDetailPage({
   const { id } = await params;
   const { status: statusParam } = await searchParams;
   const session = await auth();
-  const dbBuild = await prisma.build.findUnique({
-    where: {
-      id,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
+  const dbBuild = await safeDatabaseQuery(
+    () =>
+      prisma.build.findUnique({
+        where: {
+          id,
         },
-      },
-      parts: {
         include: {
-          part: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          parts: {
+            include: {
+              part: true,
+            },
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
         },
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
+      }),
+    {
+      label: `build-detail-${id}`,
     },
-  });
+  );
 
   if (dbBuild?.visibility === "PRIVATE" && session?.user?.id !== dbBuild.userId) {
     if (!session?.user) {
