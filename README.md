@@ -73,7 +73,11 @@ Default local database connection:
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/rigsense"
+DIRECT_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/rigsense"
+SHADOW_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/rigsense_shadow"
 ```
+
+Docker-based local development uses Postgres on `localhost:5432`. Older Prisma dev URLs like `localhost:51214` or `localhost:51215` should be removed from `.env` and `.env.local` when switching back to Docker.
 
 ### 3. Start PostgreSQL
 
@@ -82,6 +86,8 @@ Option A: Docker-based Postgres
 ```bash
 docker compose up -d
 ```
+
+If you run the app from WSL, enable Docker Desktop WSL integration for this distro so `localhost:5432` is reachable from the workspace shell.
 
 Option B: Prisma local Postgres server
 
