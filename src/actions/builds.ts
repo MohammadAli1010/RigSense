@@ -8,7 +8,7 @@ import {
   parseBuildSelections,
 } from "@/lib/build-editor";
 import { requireUser } from "@/lib/session";
-import { saveBuild, toggleBuildVisibility } from "@/services/builds/service";
+import { saveBuild, toggleBuildVisibility, cloneBuild } from "@/services/builds/service";
 
 const metadataSchema = z.object({
   title: z.string().trim().min(3).max(80),
@@ -105,4 +105,24 @@ export async function toggleBuildVisibilityAction(formData: FormData) {
   revalidatePath("/trending");
 
   redirect(`/builds/${result.buildId}?status=${result.status}`);
+}
+
+export async function cloneBuildAction(formData: FormData) {
+  const user = await requireUser();
+  const buildId = String(formData.get("buildId") ?? "").trim();
+
+  if (!buildId) {
+    redirect("/builds");
+  }
+
+  const result = await cloneBuild(buildId, user.id);
+
+  if (result.status === "missing-build" || result.status === "forbidden") {
+    redirect("/builds");
+  }
+
+  revalidatePath("/builds");
+  revalidatePath("/builder");
+
+  redirect(`/builder?buildId=${result.buildId}&status=${result.status}`);
 }

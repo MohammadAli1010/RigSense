@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { toggleBuildVisibilityAction } from "@/actions/builds";
+import { toggleBuildVisibilityAction, cloneBuildAction } from "@/actions/builds";
 import { auth } from "@/auth";
 import {
   getAnyBuildById,
@@ -195,9 +195,21 @@ export default async function BuildDetailPage({
               <input type="hidden" name="buildId" value={build.id} />
               <button
                 type="submit"
-                className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+                className="w-full rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
               >
                 {build.visibility === "PUBLIC" ? "Make private" : "Publish build"}
+              </button>
+            </form>
+          ) : null}
+
+          {session?.user && dbBuild && (!isOwner || (isOwner && build.status === "COMPLETED")) ? (
+            <form action={cloneBuildAction} className="mt-4">
+              <input type="hidden" name="buildId" value={build.id} />
+              <button
+                type="submit"
+                className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400/50 hover:text-white"
+              >
+                {isOwner ? "Duplicate to new draft" : "Clone this build"}
               </button>
             </form>
           ) : null}
