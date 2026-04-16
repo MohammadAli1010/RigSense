@@ -1,7 +1,5 @@
 import { getPartsByCategory, type MockPart, type CategoryPath } from "@/data/mock-data";
 import { type BuilderSelectionParts, analyzeBuild } from "@/lib/compatibility";
-import { analytics } from "@/lib/analytics";
-import { logger } from "@/lib/logger";
 
 export type RecommendationStrategy = "best-value" | "performance-pick" | "balanced" | "upgrade-path" | "cheaper-alternative" | "compatible-replacement";
 
@@ -90,8 +88,6 @@ export function scorePart(
 
     case "upgrade-path":
       if (currentSlotPart && candidate.priceCents > currentPrice) {
-        // Assume price correlates roughly with performance in this mock context,
-        // but penalize if it's astronomically more expensive (e.g. > 2x)
         if (candidate.priceCents > currentPrice * 2) {
           score -= 50;
           reasons.push("Significant price jump.");
@@ -105,13 +101,10 @@ export function scorePart(
       break;
 
     case "balanced":
-      // Prefers parts that are reasonably priced but high quality.
-      // We can use a simple heuristic for mock data: 
       score += 50;
       break;
       
     case "best-value":
-      // Lowest price without causing errors
       score += Math.max(0, 100 - (candidate.priceCents / 1000));
       reasons.push("Strong price-to-performance value.");
       break;
@@ -138,28 +131,9 @@ export function getRecommendations(options: RecommendationOptions): Recommendati
     scorePart(candidate, options.currentBuild, options.targetSlot, options.strategy, options.budgetCapCents)
   );
 
-  // Filter out incompatible parts and sort by score DESC
   const validCandidates = scored
     .filter((s) => s.score >= 0)
     .sort((a, b) => b.score - a.score);
 
   return validCandidates.slice(0, limit);
 }
-
-class RecommendationsService {
-  getRecommendations(options: RecommendationOptions) {
-    return getRecommendations(options);
-  }
-
-  trackRecommendationShown(partSlug: string, strategy: RecommendationStrategy, context: string) {
-    logger.info("recommendation.shown", { partSlug, strategy, context });
-    analytics.track("recommendation_shown", { partSlug, strategy, context });
-  }
-
-  trackRecommendationApplied(partSlug: string, strategy: RecommendationStrategy, context: string) {
-    logger.info("recommendation.applied", { partSlug, strategy, context });
-    analytics.track("recommendation_applied", { partSlug, strategy, context });
-  }
-}
-
-export const recommendationsService = new RecommendationsService();
