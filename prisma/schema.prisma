@@ -88,6 +88,8 @@ model Part {
   specs       Json
   buildParts  BuildPart[]
   benchmarks  Benchmark[]
+  offers      Offer[]
+  priceHistory PriceHistory[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -239,4 +241,40 @@ model BackgroundJob {
 
   @@index([status, scheduledFor])
   @@index([type, status])
+}
+
+model Offer {
+  id          String   @id @default(cuid())
+  part        Part     @relation(fields: [partId], references: [id], onDelete: Cascade)
+  partId      String
+  retailer    String
+  url         String
+  priceCents  Int
+  availability OfferAvailability
+  source      String
+  retrievedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([partId])
+  @@index([retrievedAt])
+}
+
+enum OfferAvailability {
+  IN_STOCK
+  OUT_OF_STOCK
+  LIMITED
+  UNKNOWN
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  part      Part     @relation(fields: [partId], references: [id], onDelete: Cascade)
+  partId    String
+  priceCents Int
+  source    String
+  retrievedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([partId, retrievedAt])
 }
