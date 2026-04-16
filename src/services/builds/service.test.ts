@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { prismaMock, analyticsMock, errorReportingMock, loggerMock } = vi.hoisted(() => ({
   prismaMock: {
+    $transaction: vi.fn(),
     part: {
       findMany: vi.fn(),
     },
@@ -45,13 +46,14 @@ vi.mock("@/lib/logger", () => ({
   logger: loggerMock,
 }));
 
-import { saveBuild, toggleBuildVisibility } from "@/services/builds/service";
+import { saveBuild, toggleBuildVisibility, cloneBuild } from "@/services/builds/service";
 
 const completeSelections = {
   cpu: "amd-ryzen-7-9800x3d",
   motherboard: "asus-rog-strix-b850-a",
   gpu: "nvidia-rtx-5070-ti-founders",
   ram: "gskill-trident-z5-32gb-6000",
+  ramQuantity: 1,
   primaryStorage: "samsung-990-pro-2tb",
   secondaryStorage: "",
   psu: "corsair-rm850x-shift",
@@ -128,8 +130,8 @@ describe("build service", () => {
   it("blocks saving over another user's build", async () => {
     prismaMock.part.findMany.mockResolvedValue(
       Object.values(completeSelections)
-        .filter(Boolean)
-        .map((slug, index) => ({ id: `part-${index}`, slug })),
+        .filter((v) => typeof v === "string" && v !== "")
+        .map((slug, index) => ({ id: `part-${index}`, slug: slug as string })),
     );
     prismaMock.build.findUnique.mockResolvedValue({
       id: "build-1",
@@ -153,8 +155,8 @@ describe("build service", () => {
   it("saves a complete build successfully", async () => {
     prismaMock.part.findMany.mockResolvedValue(
       Object.values(completeSelections)
-        .filter(Boolean)
-        .map((slug, index) => ({ id: `part-${index}`, slug })),
+        .filter((v) => typeof v === "string" && v !== "")
+        .map((slug, index) => ({ id: `part-${index}`, slug: slug as string })),
     );
     prismaMock.build.findUnique.mockResolvedValue(null);
     prismaMock.build.create.mockResolvedValue({
@@ -196,5 +198,59 @@ describe("build service", () => {
       buildId: "build-1",
     });
     expect(prismaMock.build.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("clones a public build into a private draft", async () => {
+    prismaMock.build.findUnique.mockResolvedValue({
+      id: "source-build",
+      userId: "someone-else",
+      title: "Public Build",
+      description: "Awesome description",
+      status: "COMPLETED",
+      visibility: "PUBLIC",
+      estimatedWattage: 450,
+      totalPriceCents: 120000,
+      compatibilityStatus: "OK",
+      parts: [
+        { partId: "part-1", slot: "CPU", quantity: 1 },
+      ],
+    });
+
+    prismaMock.$transaction = vi.fn().mockImplementation(async (callback) => {
+      const txMock = {
+        build: {
+          create: vi.fn().mockResolvedValue({ id: "cloned-build" }),
+        },
+        buildPart: {
+          createMany: vi.fn(),
+        },
+      };
+      return callback(txMock);
+    });
+
+    const result = await cloneBuild("source-build", "user-1");
+
+    expect(result).toEqual({
+      status: "cloned",
+      buildId: "cloned-build",
+    });
+    expect(prismaMock.build.findUnique).toHaveBeenCalledWith({
+      where: { id: "source-build" },
+      include: { parts: true },
+    });
+  });
+
+  it("forbids cloning someone else's private build", async () => {
+    prismaMock.build.findUnique.mockResolvedValue({
+      id: "source-build",
+      userId: "someone-else",
+      title: "Private Build",
+      visibility: "PRIVATE",
+      parts: [],
+    });
+
+    const result = await cloneBuild("source-build", "user-1");
+
+    expect(result).toEqual({ status: "forbidden" });
   });
 });

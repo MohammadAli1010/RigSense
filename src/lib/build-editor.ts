@@ -6,6 +6,7 @@ export const buildSelectionsSchema = z.object({
   motherboard: z.string().optional().default(""),
   gpu: z.string().optional().default(""),
   ram: z.string().optional().default(""),
+  ramQuantity: z.number().int().min(1).max(4).optional().default(1),
   primaryStorage: z.string().optional().default(""),
   secondaryStorage: z.string().optional().default(""),
   psu: z.string().optional().default(""),
@@ -20,6 +21,7 @@ export const emptyBuildSelections: BuildSelections = {
   motherboard: "",
   gpu: "",
   ram: "",
+  ramQuantity: 1,
   primaryStorage: "",
   secondaryStorage: "",
   psu: "",
@@ -64,7 +66,7 @@ export function getBuildSelectionSlugs(selections: BuildSelections) {
 }
 
 export function buildPartsToSelections(
-  parts: Array<{ slot: BuildSlot; part: { slug: string } }>,
+  parts: Array<{ slot: BuildSlot; quantity?: number; part: { slug: string } }>,
 ): BuildSelections {
   const selections = { ...emptyBuildSelections };
 
@@ -81,6 +83,7 @@ export function buildPartsToSelections(
         break;
       case BuildSlot.RAM:
         selections.ram = item.part.slug;
+        if (item.quantity) selections.ramQuantity = item.quantity;
         break;
       case BuildSlot.STORAGE:
         if (!selections.primaryStorage) {

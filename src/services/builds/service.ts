@@ -49,6 +49,11 @@ export type SaveBuildResult =
   | { status: "completed"; buildId: string }
   | { status: "completion-blocked"; buildId: string };
 
+export type CloneBuildResult =
+  | { status: "missing-build" }
+  | { status: "forbidden" }
+  | { status: "cloned"; buildId: string };
+
 export type ToggleBuildVisibilityResult =
   | { status: "missing-build" }
   | { status: "forbidden" }
@@ -56,7 +61,9 @@ export type ToggleBuildVisibilityResult =
   | { status: "published"; buildId: string }
   | { status: "hidden"; buildId: string };
 
-function buildPartsFromSelections(selections: BuildSelections) {
+import { BuilderSelectionParts } from "@/lib/compatibility";
+
+function buildPartsFromSelections(selections: BuildSelections): BuilderSelectionParts {
   const cpu = selections.cpu ? getPartBySlug(selections.cpu) : undefined;
   const motherboard = selections.motherboard ? getPartBySlug(selections.motherboard) : undefined;
   const gpu = selections.gpu ? getPartBySlug(selections.gpu) : undefined;
@@ -74,6 +81,7 @@ function buildPartsFromSelections(selections: BuildSelections) {
     motherboard,
     gpu,
     ram,
+    ramQuantity: selections.ramQuantity,
     storage,
     psu,
     pcCase,
@@ -227,7 +235,7 @@ export async function saveBuild(input: PersistBuildInput): Promise<SaveBuildResu
             buildId: savedBuild.id,
             partId: dbPart.id,
             slot: slotByCategory[mockPart.category],
-            quantity: 1,
+            quantity: slotByCategory[mockPart.category] === BuildSlot.RAM ? input.selections.ramQuantity || 1 : 1,
           };
         }),
       });
@@ -331,6 +339,79 @@ export async function toggleBuildVisibility(
       scope: "build.toggle_visibility",
       buildId,
       userId,
+    });
+    throw error;
+  }
+}
+
+export async function cloneBuild(
+  sourceBuildId: string,
+  targetUserId: string,
+): Promise<CloneBuildResult> {
+  try {
+    const sourceBuild = await prisma.build.findUnique({
+      where: { id: sourceBuildId },
+      include: { parts: true },
+    });
+
+    if (!sourceBuild) {
+      return { status: "missing-build" };
+    }
+
+    // Can only clone if it's yours or if it's public
+    if (sourceBuild.userId !== targetUserId && sourceBuild.visibility !== BuildVisibility.PUBLIC) {
+      return { status: "forbidden" };
+    }
+
+    const clonedBuild = await prisma.$transaction(async (tx) => {
+      const newBuild = await tx.build.create({
+        data: {
+          userId: targetUserId,
+          title: `Copy of ${sourceBuild.title}`,
+          description: sourceBuild.description,
+          status: BuildStatus.DRAFT,
+          visibility: BuildVisibility.PRIVATE,
+          estimatedWattage: sourceBuild.estimatedWattage,
+          totalPriceCents: sourceBuild.totalPriceCents,
+          compatibilityStatus: sourceBuild.compatibilityStatus,
+        },
+      });
+
+      if (sourceBuild.parts.length > 0) {
+        await tx.buildPart.createMany({
+          data: sourceBuild.parts.map((p) => ({
+            buildId: newBuild.id,
+            partId: p.partId,
+            slot: p.slot,
+            quantity: p.quantity,
+          })),
+        });
+      }
+
+      return newBuild;
+    });
+
+    logger.info("build.cloned", {
+      sourceBuildId,
+      clonedBuildId: clonedBuild.id,
+      userId: targetUserId,
+    });
+    
+    analytics.track("build_cloned", {
+      sourceBuildId,
+      clonedBuildId: clonedBuild.id,
+      userId: targetUserId,
+    });
+
+    return {
+      status: "cloned",
+      buildId: clonedBuild.id,
+    };
+  } catch (error) {
+    errorReporting.captureException(error, {
+      scope: "build.clone",
+      sourceBuildId,
+      userId: targetUserId,
     });
     throw error;
   }

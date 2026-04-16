@@ -130,6 +130,7 @@ function SelectionCard({
   value,
   onChange,
   selectedPart,
+  quantity,
 }: {
   label: string;
   helper: string;
@@ -138,6 +139,11 @@ function SelectionCard({
   value: string;
   onChange: (value: string) => void;
   selectedPart?: MockPart;
+  quantity?: {
+    value: number;
+    onChange: (value: number) => void;
+    max: number;
+  };
 }) {
   const topSpecs = selectedPart ? Object.entries(selectedPart.specs).slice(0, 2) : [];
 
@@ -155,18 +161,35 @@ function SelectionCard({
         ) : null}
       </div>
 
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-5 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60"
-      >
-        <option value="">Select {label}</option>
-        {options.map((part) => (
-          <option key={part.slug} value={part.slug}>
-            {part.brand} {part.name}
-          </option>
-        ))}
-      </select>
+      <div className="flex flex-col gap-3 mt-5 sm:flex-row sm:items-center">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="flex-1 rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60"
+        >
+          <option value="">Select {label}</option>
+          {options.map((part) => (
+            <option key={part.slug} value={part.slug}>
+              {part.brand} {part.name}
+            </option>
+          ))}
+        </select>
+        
+        {quantity && value && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm text-slate-400">Qty:</span>
+            <select
+              value={quantity.value}
+              onChange={(e) => quantity.onChange(parseInt(e.target.value, 10))}
+              className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60"
+            >
+              {Array.from({ length: quantity.max }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {selectedPart ? (
         <div className="mt-5 rounded-3xl border border-white/10 bg-slate-950/70 p-4">
@@ -177,7 +200,7 @@ function SelectionCard({
             </div>
             <div className="flex flex-col items-end">
               <p className="text-sm font-semibold text-cyan-200">
-                {formatPrice(selectedPart.priceCents)}
+                {quantity ? `${formatPrice(selectedPart.priceCents)} ea` : formatPrice(selectedPart.priceCents)}
               </p>
               {selectedPart.lastUpdated && (
                 <p className="mt-1 text-[10px] text-slate-400 flex flex-col items-end">
@@ -409,7 +432,12 @@ export function BuilderWorkbench({
                   [slot.key]: value,
                 }))
               }
-              selectedPart={selectedParts[slot.key]}
+              selectedPart={selectedParts[slot.key as keyof typeof selectedParts] as MockPart}
+              quantity={slot.key === "ram" ? {
+                value: selections.ramQuantity,
+                onChange: (v) => setSelections((curr: BuildSelections) => ({ ...curr, ramQuantity: v })),
+                max: 4
+              } : undefined}
             />
           ))}
 
@@ -549,21 +577,23 @@ export function BuilderWorkbench({
               ) : null}
 
               {analysis.errors.map((issue) => (
-                <p
-                  key={issue}
+                <div
+                  key={issue.message}
                   className="rounded-3xl border border-rose-400/20 bg-rose-400/10 px-4 py-4 text-sm leading-7 text-rose-100"
                 >
-                  {issue}
-                </p>
+                  <p className="font-semibold">{issue.message}</p>
+                  {issue.remedy && <p className="mt-2 text-rose-200/80">{issue.remedy}</p>}
+                </div>
               ))}
 
               {analysis.warnings.map((issue) => (
-                <p
-                  key={issue}
+                <div
+                  key={issue.message}
                   className="rounded-3xl border border-amber-400/20 bg-amber-400/10 px-4 py-4 text-sm leading-7 text-amber-100"
                 >
-                  {issue}
-                </p>
+                  <p className="font-semibold">{issue.message}</p>
+                  {issue.remedy && <p className="mt-2 text-amber-200/80">{issue.remedy}</p>}
+                </div>
               ))}
             </div>
           </div>
@@ -602,10 +632,6 @@ export function BuilderWorkbench({
                         </p>
                       )}
                     </div>
-                  </div>
-                    <p className="text-sm font-semibold text-cyan-200">
-                      {formatPrice(part.priceCents)}
-                    </p>
                   </div>
                 ))
               ) : (

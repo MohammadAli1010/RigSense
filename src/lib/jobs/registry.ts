@@ -1,7 +1,7 @@
 import { canReachDatabase } from "@/lib/database-reachability";
 import type { JobDefinition } from "@/lib/jobs/types";
 import { pricingService } from "@/lib/pricing/service";
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
 
 const healthCheckJob: JobDefinition = {
   type: "foundation.health-check",
@@ -30,7 +30,7 @@ const priceRefreshJob: JobDefinition = {
     }
     
     // Refresh batch of parts (e.g. oldest updated first)
-    const staleParts = await db.part.findMany({
+    const staleParts = await prisma.part.findMany({
       orderBy: { lastUpdated: 'asc' },
       take: 10
     });

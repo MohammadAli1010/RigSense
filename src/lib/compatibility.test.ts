@@ -56,11 +56,11 @@ describe("analyzeBuild", () => {
       "PSU",
       "Case",
     ]);
-    expect(result.warnings).toContain(
-      "No CPU cooler selected yet. Add one before treating the build as final.",
+    expect(result.warnings.map(w => w.message)).toContain(
+      "No CPU cooler selected yet.",
     );
-    expect(result.warnings).toContain(
-      "No dedicated GPU selected. That can still be valid, but gaming and benchmark expectations will differ.",
+    expect(result.warnings.map(w => w.message)).toContain(
+      "No dedicated GPU selected.",
     );
   });
 
@@ -103,17 +103,17 @@ describe("analyzeBuild", () => {
 
     expect(result.readiness).toBe("blocked");
     expect(result.compatibilityStatus).toBe("ERROR");
-    expect(result.errors).toContain(
+    expect(result.errors.map(e => e.message)).toContain(
       "CPU socket LGA1851 does not match motherboard socket AM5.",
     );
-    expect(result.errors).toContain(
+    expect(result.errors.map(e => e.message)).toContain(
       "RAM type DDR4 does not match motherboard memory support DDR5.",
     );
-    expect(result.errors).toContain(
+    expect(result.errors.map(e => e.message)).toContain(
       "Selected cooler does not list support for the CPU socket LGA1851.",
     );
-    expect(result.errors).toContain("GPU length 450mm exceeds case clearance of 280mm.");
-    expect(result.errors).toContain(
+    expect(result.errors.map(e => e.message)).toContain("GPU length 450mm exceeds case clearance of 280mm.");
+    expect(result.errors.map(e => e.message)).toContain(
       "Cooler height 164mm exceeds case CPU cooler clearance of 150mm.",
     );
   });

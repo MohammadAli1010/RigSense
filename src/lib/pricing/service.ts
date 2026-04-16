@@ -1,7 +1,8 @@
-import { db } from '@/lib/db';
+import { prisma } from '@/lib/db';
 import { PricingProvider } from './provider';
 import { MockPricingProvider } from './mock-provider';
 import { logger } from '@/lib/logger';
+import { OfferAvailability } from '@prisma/client';
 
 export class PricingService {
   private providers: PricingProvider[] = [
@@ -9,10 +10,16 @@ export class PricingService {
   ];
 
   async refreshPartPricing(partId: string): Promise<void> {
-    const part = await db.part.findUnique({ where: { id: partId } });
+    const part = await prisma.part.findUnique({ where: { id: partId } });
     if (!part) throw new Error(`Part not found: ${partId}`);
 
-    const allOffers = [];
+    const allOffers: Array<{
+      retailer: string;
+      url: string;
+      priceCents: number;
+      availability: OfferAvailability;
+      source: string;
+    }> = [];
     
     for (const provider of this.providers) {
       if (await provider.isHealthy()) {
@@ -28,7 +35,7 @@ export class PricingService {
     }
 
     if (allOffers.length > 0) {
-      await db.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         // Delete old offers
         await tx.offer.deleteMany({
           where: { partId: part.id }
