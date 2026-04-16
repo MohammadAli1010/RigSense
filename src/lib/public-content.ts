@@ -23,6 +23,7 @@ import {
   guides as mockGuides,
   publicBuilds,
 } from "@/data/mock-data";
+import { getRecommendations } from "@/services/recommendations/service";
 import { safeDatabaseQuery } from "@/lib/database-reachability";
 import { prisma } from "@/lib/db";
 
@@ -290,41 +291,58 @@ export async function getPartDetailData(categoryPath: string, slug: string) {
     }),
   );
 
+  const mockPartBase = getPartByCategoryAndSlug(categoryPath, slug);
+
   if (dbPart && dbPart.category === categoryInfo.category) {
-    const [relatedParts, relatedBenchmarks] = await Promise.all([
-      safeQuery(() =>
+    const relatedBenchmarks = await safeQuery(() =>
+      prisma.benchmark.findMany({
+        where: {
+          partId: dbPart.id,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      }),
+    );
+
+    let finalRelatedParts: PublicPart[] = [];
+    if (mockPartBase) {
+      const recommended = getRecommendations({
+        strategy: "balanced",
+        targetSlot: categoryPath as any,
+        currentBuild: { storage: [] },
+        budgetCapCents: mockPartBase.priceCents * 1.5,
+        limit: 5
+      }).filter(r => r.part.slug !== slug).slice(0, 4).map(r => r.part);
+      
+      if (recommended.length > 0) {
+         const dbRelatedParts = await safeQuery(() => 
+           prisma.part.findMany({
+             where: { slug: { in: recommended.map(p => p.slug) } }
+           })
+         );
+         finalRelatedParts = recommended.map(rp => {
+            const dbMatch = dbRelatedParts?.find(dbp => dbp.slug === rp.slug);
+            return dbMatch ? normalizePart(dbMatch) : rp as any;
+         });
+      }
+    }
+    
+    if (finalRelatedParts.length === 0) {
+      const fallbackRelated = await safeQuery(() =>
         prisma.part.findMany({
-          where: {
-            category: dbPart.category,
-            slug: {
-              not: slug,
-            },
-          },
-          orderBy: {
-            name: "asc",
-          },
+          where: { category: dbPart.category, slug: { not: slug } },
+          orderBy: { name: "asc" },
           take: 4,
-        }),
-      ),
-      safeQuery(() =>
-        prisma.benchmark.findMany({
-          where: {
-            partId: dbPart.id,
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        }),
-      ),
-    ]);
+        })
+      );
+      finalRelatedParts = fallbackRelated ? fallbackRelated.map(normalizePart) : [];
+    }
 
     return {
       categoryInfo,
       part: normalizePart(dbPart),
-      relatedParts:
-        relatedParts && relatedParts.length > 0
-          ? relatedParts.map(normalizePart)
-          : getPartsByCategory(categoryPath).filter((part) => part.slug !== slug),
+      relatedParts: finalRelatedParts,
       benchmarks:
         relatedBenchmarks && relatedBenchmarks.length > 0
           ? relatedBenchmarks.map(normalizeBenchmark)
@@ -341,16 +359,22 @@ export async function getPartDetailData(categoryPath: string, slug: string) {
     };
   }
 
-  const fallbackPart = getPartByCategoryAndSlug(categoryPath, slug);
-
-  if (!fallbackPart) {
+  if (!mockPartBase) {
     return null;
   }
+  
+  const recommended = getRecommendations({
+    strategy: "balanced",
+    targetSlot: categoryPath as any,
+    currentBuild: { storage: [] },
+    budgetCapCents: mockPartBase.priceCents * 1.5,
+    limit: 5
+  }).filter(r => r.part.slug !== slug).slice(0, 4).map(r => r.part as any);
 
   return {
     categoryInfo,
-    part: fallbackPart,
-    relatedParts: getPartsByCategory(categoryPath).filter((part) => part.slug !== slug),
+    part: mockPartBase,
+    relatedParts: recommended.length > 0 ? recommended : getPartsByCategory(categoryPath).filter((part) => part.slug !== slug).slice(0, 4),
     benchmarks: mockBenchmarks
       .filter((benchmark) => benchmark.partSlug === slug)
       .map((benchmark) => ({

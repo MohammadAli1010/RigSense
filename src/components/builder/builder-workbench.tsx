@@ -9,6 +9,8 @@ import type { BuildEditorDraft, BuildSelections } from "@/lib/build-editor";
 import { emptyBuildSelections } from "@/lib/build-editor";
 import { formatPrice, formatSegment, formatSpecValue, formatRelativeTime, isPriceStale } from "@/lib/format";
 import { analyzeBuild } from "@/lib/compatibility";
+import type { RecommendationScore } from "@/services/recommendations/service";
+import { getRecommendations } from "@/services/recommendations/service";
 
 type BuilderWorkbenchProps = {
   parts: MockPart[];
@@ -131,6 +133,8 @@ function SelectionCard({
   onChange,
   selectedPart,
   quantity,
+  recommendations,
+  onSelectRecommendation,
 }: {
   label: string;
   helper: string;
@@ -144,6 +148,8 @@ function SelectionCard({
     onChange: (value: number) => void;
     max: number;
   };
+  recommendations?: RecommendationScore[];
+  onSelectRecommendation?: (slug: string, strategy: string) => void;
 }) {
   const topSpecs = selectedPart ? Object.entries(selectedPart.specs).slice(0, 2) : [];
 
@@ -225,6 +231,29 @@ function SelectionCard({
           </div>
         </div>
       ) : null}
+
+      {recommendations && recommendations.length > 0 && onSelectRecommendation && (
+        <div className="mt-5">
+          <p className="text-xs uppercase tracking-[0.25em] text-cyan-200 mb-3">Recommended for your build</p>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {recommendations.map((rec) => (
+              <button
+                key={rec.part.slug}
+                type="button"
+                onClick={() => onSelectRecommendation(rec.part.slug, "best-value")}
+                className="flex flex-col items-start text-left rounded-3xl border border-white/10 bg-slate-950/40 p-4 transition hover:border-cyan-400/40 hover:bg-slate-950/60"
+              >
+                <p className="text-xs text-slate-400">{rec.part.brand}</p>
+                <p className="mt-1 text-sm font-semibold text-white line-clamp-1">{rec.part.name}</p>
+                <p className="mt-2 text-sm font-semibold text-cyan-200">{formatPrice(rec.part.priceCents)}</p>
+                {rec.reasons[0] && (
+                  <p className="mt-2 text-xs text-slate-400 line-clamp-1">{rec.reasons[0]}</p>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -479,6 +508,22 @@ export function BuilderWorkbench({
                 }))
               }
               selectedPart={selectedParts[slot.key as keyof typeof selectedParts] as MockPart}
+              recommendations={
+                !selections[slot.key]
+                  ? getRecommendations({
+                      strategy: "best-value",
+                      targetSlot: slot.categoryPath,
+                      currentBuild: selectedParts,
+                      limit: 3,
+                    })
+                  : undefined
+              }
+              onSelectRecommendation={(slug) =>
+                setSelections((current: BuildSelections) => ({
+                  ...current,
+                  [slot.key]: slug,
+                }))
+              }
               quantity={slot.key === "ram" ? {
                 value: selections.ramQuantity,
                 onChange: (v) => setSelections((curr: BuildSelections) => ({ ...curr, ramQuantity: v })),
