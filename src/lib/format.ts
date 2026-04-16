@@ -20,3 +20,22 @@ export function formatSpecValue(value: number | string | string[]) {
 
   return String(value);
 }
+
+export function formatRelativeTime(date: Date) {
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  const diffInSeconds = (date.getTime() - Date.now()) / 1000;
+  const diffInMinutes = Math.round(diffInSeconds / 60);
+  const diffInHours = Math.round(diffInMinutes / 60);
+  const diffInDays = Math.round(diffInHours / 24);
+
+  if (Math.abs(diffInDays) > 0) return rtf.format(diffInDays, "day");
+  if (Math.abs(diffInHours) > 0) return rtf.format(diffInHours, "hour");
+  if (Math.abs(diffInMinutes) > 0) return rtf.format(diffInMinutes, "minute");
+  
+  return rtf.format(Math.round(diffInSeconds), "second");
+}
+
+export function isPriceStale(date: Date) {
+  const TWENTY_FOUR_HOURS_IN_MS = 24 * 60 * 60 * 1000;
+  return Date.now() - date.getTime() > TWENTY_FOUR_HOURS_IN_MS;
+}

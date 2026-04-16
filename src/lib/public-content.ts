@@ -228,23 +228,39 @@ export async function getPartsOverviewData() {
   };
 }
 
-export async function getPartCategoryData(categoryPath: string) {
+export async function getPartCategoryData(
+  categoryPath: string,
+  search?: string,
+  sort?: string,
+  page = 1,
+  limit = 20
+) {
   const categoryInfo = getCategory(categoryPath);
 
   if (!categoryInfo) {
     return null;
   }
 
+  const where: any = { category: categoryInfo.category };
+  if (search) {
+    where.name = { contains: search, mode: "insensitive" };
+  }
+
+  const orderBy: any = {};
+  if (sort === "price-asc") orderBy.priceCents = "asc";
+  else if (sort === "price-desc") orderBy.priceCents = "desc";
+  else orderBy.name = "asc";
+
   const dbParts = await safeQuery(() =>
     prisma.part.findMany({
-      where: {
-        category: categoryInfo.category,
-      },
-      orderBy: {
-        name: "asc",
-      },
+      where,
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
     }),
   );
+
+  const total = await safeQuery(() => prisma.part.count({ where })) || 0;
 
   return {
     categoryInfo,
@@ -252,6 +268,10 @@ export async function getPartCategoryData(categoryPath: string) {
       dbParts && dbParts.length > 0
         ? dbParts.map(normalizePart)
         : getPartsByCategory(categoryPath),
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
   };
 }
 

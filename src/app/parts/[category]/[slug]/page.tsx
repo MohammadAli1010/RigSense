@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getPartDetailData } from "@/lib/public-content";
-import { formatPrice, formatSegment, formatSpecValue } from "@/lib/format";
+import { formatPrice, formatSegment, formatSpecValue, formatRelativeTime, isPriceStale } from "@/lib/format";
 
 type PartDetailPageProps = {
   params: Promise<{
@@ -20,6 +20,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   }
 
   const { categoryInfo, part, relatedParts, benchmarks: relatedBenchmarks } = data;
+  const isStale = part.lastUpdated ? isPriceStale(new Date(part.lastUpdated)) : false;
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-6 py-16 lg:py-24">
@@ -60,6 +61,17 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
           <p className="mt-4 text-3xl font-semibold text-white">
             {formatPrice(part.priceCents)}
           </p>
+          <div className="mt-2 flex flex-col gap-1 text-xs text-slate-400">
+            {part.priceSource && (
+              <p>Source: <span className="font-semibold text-slate-300">{part.priceSource}</span></p>
+            )}
+            {part.lastUpdated && (
+              <p>
+                Updated: <span className="text-slate-300">{formatRelativeTime(new Date(part.lastUpdated))}</span>
+                {isStale && <span className="ml-2 text-amber-400 font-semibold">(Stale)</span>}
+              </p>
+            )}
+          </div>
           <p className="mt-4 text-sm leading-7 text-slate-400">
             This seeded profile is already structured for the builder, benchmark, and
             future live pricing flows. The specs below are the same facts the

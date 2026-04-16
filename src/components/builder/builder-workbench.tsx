@@ -7,7 +7,7 @@ import { saveBuildAction } from "@/actions/builds";
 import type { CategoryPath, MockBuild, MockPart } from "@/data/mock-data";
 import type { BuildEditorDraft, BuildSelections } from "@/lib/build-editor";
 import { emptyBuildSelections } from "@/lib/build-editor";
-import { formatPrice, formatSegment, formatSpecValue } from "@/lib/format";
+import { formatPrice, formatSegment, formatSpecValue, formatRelativeTime, isPriceStale } from "@/lib/format";
 import { analyzeBuild } from "@/lib/compatibility";
 
 type BuilderWorkbenchProps = {
@@ -175,9 +175,19 @@ function SelectionCard({
               <p className="text-sm text-slate-400">{selectedPart.brand}</p>
               <p className="mt-1 text-base font-semibold text-white">{selectedPart.name}</p>
             </div>
-            <p className="text-sm font-semibold text-cyan-200">
-              {formatPrice(selectedPart.priceCents)}
-            </p>
+            <div className="flex flex-col items-end">
+              <p className="text-sm font-semibold text-cyan-200">
+                {formatPrice(selectedPart.priceCents)}
+              </p>
+              {selectedPart.lastUpdated && (
+                <p className="mt-1 text-[10px] text-slate-400 flex flex-col items-end">
+                  {selectedPart.priceSource && <span>{selectedPart.priceSource}</span>}
+                  <span className={isPriceStale(new Date(selectedPart.lastUpdated)) ? "text-amber-400" : ""}>
+                    {formatRelativeTime(new Date(selectedPart.lastUpdated))}
+                  </span>
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -463,16 +473,26 @@ export function BuilderWorkbench({
             {selectedParts.storage.length > 0 ? (
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 {selectedParts.storage.map((part, index) => (
-                  <div
-                    key={`${part.slug}-${index}`}
-                    className="rounded-3xl border border-white/10 bg-slate-950/70 p-4"
-                  >
-                    <p className="text-sm text-slate-400">{index === 0 ? "Primary" : "Secondary"}</p>
-                    <p className="mt-1 text-base font-semibold text-white">{part.name}</p>
-                    <p className="mt-3 text-sm font-semibold text-cyan-200">
+                <div
+                  key={part.slug}
+                  className="rounded-3xl border border-white/10 bg-slate-950/70 p-4"
+                >
+                  <p className="text-sm text-slate-400">{index === 0 ? "Primary" : "Secondary"}</p>
+                  <p className="mt-1 text-base font-semibold text-white">{part.name}</p>
+                  <div className="mt-3 flex items-end justify-between">
+                    <p className="text-sm font-semibold text-cyan-200">
                       {formatPrice(part.priceCents)}
                     </p>
+                    {part.lastUpdated && (
+                      <p className="text-[10px] text-slate-400 flex flex-col items-end">
+                        {part.priceSource && <span>{part.priceSource}</span>}
+                        <span className={isPriceStale(new Date(part.lastUpdated)) ? "text-amber-400" : ""}>
+                          {formatRelativeTime(new Date(part.lastUpdated))}
+                        </span>
+                      </p>
+                    )}
                   </div>
+                </div>
                 ))}
               </div>
             ) : null}
@@ -562,13 +582,27 @@ export function BuilderWorkbench({
               {selectedCatalogParts.length > 0 ? (
                 selectedCatalogParts.map((part, index) => (
                   <div
-                    key={`${part.slug}-${index}`}
-                    className="flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/60 px-4 py-3"
+                    key={`${part.categoryPath}-${part.slug}`}
+                    className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3"
                   >
                     <div>
                       <p className="text-sm text-slate-400">{formatSegment(part.categoryPath)}</p>
                       <p className="text-sm font-medium text-white">{part.name}</p>
                     </div>
+                    <div className="flex flex-col items-end">
+                      <p className="text-sm font-semibold text-cyan-200">
+                        {formatPrice(part.priceCents)}
+                      </p>
+                      {part.lastUpdated && (
+                        <p className="text-[10px] text-slate-400 flex flex-col items-end">
+                          {part.priceSource && <span>{part.priceSource}</span>}
+                          <span className={isPriceStale(new Date(part.lastUpdated)) ? "text-amber-400" : ""}>
+                            {formatRelativeTime(new Date(part.lastUpdated))}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
                     <p className="text-sm font-semibold text-cyan-200">
                       {formatPrice(part.priceCents)}
                     </p>
