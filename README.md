@@ -4,7 +4,7 @@ RigSense is a custom PC building platform focused on part discovery, private bui
 
 The current codebase includes the foundational app shell, credentials-based auth, Prisma schema, protected account routes, and seeded public pages for the catalog, guides, benchmarks, trending builds, and forum.
 
-Milestone 1 foundation hardening is now in place with validated runtime env access, extracted auth/build/forum services, a background job foundation, and service-level tests for core mutation flows.
+Milestones 1-5 (Auth, Catalog, Builder Lifecycle, Recommendations, Benchmarks) are now fully implemented and passing service-level tests.
 
 ## Stack
 
@@ -25,8 +25,10 @@ Implemented now:
 - Register, login, logout, and protected profile flow
 - Prisma schema for users, parts, builds, guides, benchmarks, forum, and answer votes
 - Prisma migration and seed support for local development
-- Interactive PC builder with compatibility analysis
-- Database-backed saved builds, completion, and publish/unpublish flow
+- Interactive PC builder with compatibility analysis, autosaving, and clone/fork flows
+- Database-backed saved builds, completion, publish/unpublish flow, and visibility toggles
+- A deterministic recommendation engine scoring parts by compatibility, value, and budget
+- A dedicated side-by-side benchmark `/compare` view with inline benchmark metrics in the builder
 - Database-backed forum questions, answers, voting, and solved answers
 - Public pages for:
   - parts catalog
@@ -41,7 +43,7 @@ Implemented now:
 Still intentionally deferred from v1:
 
 - external pricing APIs
-- advanced recommendation engine
+- advanced recommendation engine (v2)
 - richer threaded forum model
 - admin CMS / moderation dashboards
 - automated benchmark ingestion
