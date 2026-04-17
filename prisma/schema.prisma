@@ -36,6 +36,13 @@ enum CompatibilityStatus {
   ERROR
 }
 
+enum PerformanceTier {
+  BUDGET
+  MAINSTREAM
+  HIGH_END
+  ENTHUSIAST
+}
+
 enum BuildSlot {
   CPU
   MOTHERBOARD
@@ -110,6 +117,8 @@ model Build {
   totalPriceCents     Int                  @default(0)
   compatibilityStatus CompatibilityStatus  @default(WARNING)
   trendScore          Int                  @default(0)
+  intendedUse         String               @default("Gaming")
+  performanceTier     PerformanceTier      @default(MAINSTREAM)
   parts               BuildPart[]
   benchmarks          Benchmark[]
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)

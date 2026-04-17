@@ -151,6 +151,8 @@ async function seedBuilds(users: Map<string, Awaited<ReturnType<typeof upsertUse
         totalPriceCents: build.totalPriceCents,
         compatibilityStatus: build.compatibilityStatus,
         trendScore: build.trendScore,
+        intendedUse: build.intendedUse,
+        performanceTier: build.performanceTier,
       },
       create: {
         id: build.id,
@@ -163,6 +165,8 @@ async function seedBuilds(users: Map<string, Awaited<ReturnType<typeof upsertUse
         totalPriceCents: build.totalPriceCents,
         compatibilityStatus: build.compatibilityStatus,
         trendScore: build.trendScore,
+        intendedUse: build.intendedUse,
+        performanceTier: build.performanceTier,
       },
     });
 

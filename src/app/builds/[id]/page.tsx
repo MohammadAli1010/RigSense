@@ -182,6 +182,18 @@ export default async function BuildDetailPage({
               <span>Status</span>
               <span>{build.status}</span>
             </div>
+            {build.intendedUse ? (
+              <div className="flex items-center justify-between gap-4">
+                <span>Intended Use</span>
+                <span>{build.intendedUse}</span>
+              </div>
+            ) : null}
+            {build.performanceTier ? (
+              <div className="flex items-center justify-between gap-4">
+                <span>Performance Tier</span>
+                <span>{build.performanceTier}</span>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between gap-4">
               <span>Visibility</span>
               <span>{build.visibility}</span>

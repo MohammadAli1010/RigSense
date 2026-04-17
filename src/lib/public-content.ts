@@ -79,6 +79,8 @@ export type PublicBuild = {
   compatibilityStatus: string;
   authorName: string;
   tags: string[];
+  intendedUse?: string | null;
+  performanceTier?: string | null;
 };
 
 export type PublicQuestionSummary = {
@@ -514,6 +516,8 @@ export async function getTrendingBuildsOverviewData() {
     compatibilityStatus: build.compatibilityStatus,
     authorName: build.user.name,
     tags: deriveBuildTags(build),
+    intendedUse: build.intendedUse,
+    performanceTier: build.performanceTier,
   }));
 }
 
@@ -670,6 +674,8 @@ export async function getUserProfileData(userId: string) {
       compatibilityStatus: build.compatibilityStatus,
       authorName: user.name,
       tags: deriveBuildTags(build),
+      intendedUse: build.intendedUse,
+      performanceTier: build.performanceTier,
     })),
     recentQuestions: user.questions.map((q) => ({
       id: q.id,

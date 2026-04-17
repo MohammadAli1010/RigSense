@@ -69,6 +69,8 @@ export type MockBuild = {
   totalPriceCents: number;
   compatibilityStatus: CompatibilityStatus;
   trendScore: number;
+  intendedUse: string;
+  performanceTier: "BUDGET" | "MAINSTREAM" | "HIGH_END" | "ENTHUSIAST";
   tags: string[];
   partSlugs: string[];
 };
@@ -482,6 +484,8 @@ export const publicBuilds: MockBuild[] = [
     totalPriceCents: 223600,
     compatibilityStatus: CompatibilityStatus.OK,
     trendScore: 94,
+    intendedUse: "Gaming",
+    performanceTier: "HIGH_END",
     tags: ["1440p", "Gaming", "Airflow"],
     partSlugs: [
       "amd-ryzen-7-9800x3d",
@@ -505,6 +509,8 @@ export const publicBuilds: MockBuild[] = [
     totalPriceCents: 266500,
     compatibilityStatus: CompatibilityStatus.OK,
     trendScore: 88,
+    intendedUse: "Creator",
+    performanceTier: "ENTHUSIAST",
     tags: ["Creator", "64GB RAM", "Mixed workload"],
     partSlugs: [
       "intel-core-ultra-7-265k",
@@ -528,6 +534,8 @@ export const publicBuilds: MockBuild[] = [
     totalPriceCents: 229500,
     compatibilityStatus: CompatibilityStatus.OK,
     trendScore: 83,
+    intendedUse: "Gaming",
+    performanceTier: "HIGH_END",
     tags: ["AMD", "Quiet", "4TB"],
     partSlugs: [
       "amd-ryzen-7-9800x3d",
@@ -554,6 +562,8 @@ export const personalBuilds: MockBuild[] = [
     totalPriceCents: 124500,
     compatibilityStatus: CompatibilityStatus.WARNING,
     trendScore: 0,
+    intendedUse: "Gaming",
+    performanceTier: "MAINSTREAM",
     tags: ["Draft", "Private", "AM5"],
     partSlugs: [
       "amd-ryzen-7-9800x3d",
@@ -575,6 +585,8 @@ export const personalBuilds: MockBuild[] = [
     totalPriceCents: 268400,
     compatibilityStatus: CompatibilityStatus.OK,
     trendScore: 0,
+    intendedUse: "Creator",
+    performanceTier: "ENTHUSIAST",
     tags: ["Completed", "Private", "Creator"],
     partSlugs: [
       "intel-core-ultra-7-265k",
@@ -598,6 +610,8 @@ export const personalBuilds: MockBuild[] = [
     totalPriceCents: 224900,
     compatibilityStatus: CompatibilityStatus.OK,
     trendScore: 62,
+    intendedUse: "Gaming",
+    performanceTier: "HIGH_END",
     tags: ["Completed", "Public", "1440p"],
     partSlugs: [
       "amd-ryzen-7-9800x3d",
