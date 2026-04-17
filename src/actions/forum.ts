@@ -9,11 +9,13 @@ import {
   createQuestion,
   markSolvedAnswer,
   voteAnswer,
+  createReport,
 } from "@/services/forum/service";
 
 const questionSchema = z.object({
   title: z.string().trim().min(8).max(120),
   body: z.string().trim().min(20).max(2000),
+  tags: z.string().optional(),
 });
 
 const answerSchema = z.object({
@@ -46,6 +48,7 @@ export async function createQuestionAction(formData: FormData) {
   const parsed = questionSchema.safeParse({
     title: formData.get("title"),
     body: formData.get("body"),
+    tags: formData.get("tags"),
   });
 
   if (!categorySlug) {
@@ -56,11 +59,16 @@ export async function createQuestionAction(formData: FormData) {
     redirectToCategory(categorySlug, "question-invalid");
   }
 
+  const tags = parsed.data?.tags 
+    ? parsed.data.tags.split(",").map(t => t.trim().toLowerCase()).filter(Boolean).slice(0, 5) 
+    : [];
+
   const result = await createQuestion({
     authorId: user.id,
     categorySlug,
     title: parsed.data.title,
     body: parsed.data.body,
+    tags,
   });
 
   if (result.status === "seed-forum-required") {
@@ -150,4 +158,29 @@ export async function markSolvedAnswerAction(formData: FormData) {
   }
 
   redirectToQuestion(result.questionId, "solved-marked");
+}
+
+export async function reportContentAction(formData: FormData) {
+  const user = await requireUser();
+  const questionId = formData.get("questionId") ? String(formData.get("questionId")).trim() : undefined;
+  const answerId = formData.get("answerId") ? String(formData.get("answerId")).trim() : undefined;
+  const reason = formData.get("reason") ? String(formData.get("reason")).trim() : "inappropriate";
+  const redirectQuestionId = String(formData.get("redirectQuestionId") ?? questionId ?? "").trim();
+
+  if (!questionId && !answerId) {
+    redirect("/forum");
+  }
+
+  await createReport({
+    reporterId: user.id,
+    reason,
+    questionId,
+    answerId,
+  });
+
+  if (redirectQuestionId) {
+    redirectToQuestion(redirectQuestionId, "reported");
+  }
+  
+  redirect("/forum");
 }

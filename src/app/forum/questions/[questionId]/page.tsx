@@ -5,6 +5,7 @@ import {
   createAnswerAction,
   markSolvedAnswerAction,
   voteAnswerAction,
+  reportContentAction,
 } from "@/actions/forum";
 import { auth } from "@/auth";
 import { getForumQuestionById } from "@/data/mock-data";
@@ -31,6 +32,8 @@ function getStatusMessage(status?: string) {
       return "Add a little more detail before posting the answer.";
     case "solved-marked":
       return "Solved answer updated.";
+    case "reported":
+      return "Thank you. Your report has been submitted to moderation.";
     default:
       return null;
   }
@@ -91,6 +94,7 @@ export default async function ForumQuestionPage({
         isAccepted: answer.isAccepted,
         authorName: answer.author.name,
         parentId: answer.parentId ?? undefined,
+        status: answer.status,
       }))
     : sortAnswersByAcceptanceAndScore(fallbackQuestion!.answers).map((answer) => ({
         id: answer.id,
@@ -99,6 +103,7 @@ export default async function ForumQuestionPage({
         isAccepted: answer.isAccepted,
         authorName: answer.authorName,
         parentId: answer.parentId ?? undefined,
+        status: answer.status,
       }));
   const statusMessage = getStatusMessage(status);
   const isOwner = Boolean(dbQuestion && session?.user?.id === dbQuestion.authorId);
@@ -141,15 +146,39 @@ export default async function ForumQuestionPage({
               Solved
             </span>
           ) : null}
+          {question.status === "LOCKED" ? (
+            <span className="inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-amber-200">
+              Locked
+            </span>
+          ) : null}
         </div>
           <h1 className="text-4xl font-semibold tracking-tight text-white">
             {question.title}
           </h1>
-          <p className="text-lg leading-8 text-slate-300">{question.body}</p>
-          <div className="flex flex-wrap gap-6 text-sm text-slate-400">
-            <span>Asked by {questionAuthorName}</span>
-            <span>{question.viewCount} views</span>
-            <span>{answerCount} answers</span>
+          {question.status === "HIDDEN" ? (
+            <p className="text-lg leading-8 text-slate-500 italic">
+              [This question has been hidden by moderation]
+            </p>
+          ) : (
+            <p className="text-lg leading-8 text-slate-300">{question.body}</p>
+          )}
+          <div className="flex flex-wrap gap-6 text-sm text-slate-400 items-center justify-between">
+            <div className="flex gap-6">
+              <span>Asked by {questionAuthorName}</span>
+              <span>{question.viewCount} views</span>
+              <span>{answerCount} answers</span>
+            </div>
+            {session?.user ? (
+              <form action={reportContentAction}>
+                <input type="hidden" name="questionId" value={question.id} />
+                <button
+                  type="submit"
+                  className="text-xs text-slate-500 hover:text-rose-400 transition"
+                >
+                  Report issue
+                </button>
+              </form>
+            ) : null}
           </div>
 
           {question.tags && question.tags.length > 0 ? (
@@ -167,7 +196,11 @@ export default async function ForumQuestionPage({
         </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
-        {session?.user && dbQuestion ? (
+        {question.status === "LOCKED" ? (
+          <div className="text-sm leading-7 text-slate-400">
+            This discussion has been locked by moderators. No new answers can be posted.
+          </div>
+        ) : session?.user && dbQuestion ? (
           <form action={createAnswerAction} className="space-y-4">
             <input type="hidden" name="questionId" value={dbQuestion.id} />
             <div>
@@ -229,7 +262,11 @@ export default async function ForumQuestionPage({
                     </span>
                   ) : null}
                 </div>
-                <p className="text-base leading-8 text-slate-300">{answer.body}</p>
+                {answer.status === "HIDDEN" ? (
+                  <p className="text-base leading-8 text-slate-500 italic">[This reply was hidden by moderation]</p>
+                ) : (
+                  <p className="text-base leading-8 text-slate-300">{answer.body}</p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   {session?.user && dbQuestion ? (
                     <>
@@ -255,7 +292,7 @@ export default async function ForumQuestionPage({
                           Downvote
                         </button>
                       </form>
-                      {isOwner && !answer.isAccepted ? (
+                      {isOwner && !answer.isAccepted && question.status !== "LOCKED" ? (
                         <form action={markSolvedAnswerAction}>
                           <input type="hidden" name="questionId" value={dbQuestion.id} />
                           <input type="hidden" name="answerId" value={answer.id} />
@@ -267,6 +304,16 @@ export default async function ForumQuestionPage({
                           </button>
                         </form>
                       ) : null}
+                      <form action={reportContentAction} className="ml-auto">
+                        <input type="hidden" name="redirectQuestionId" value={dbQuestion.id} />
+                        <input type="hidden" name="answerId" value={answer.id} />
+                        <button
+                          type="submit"
+                          className="px-3 py-2 text-xs text-slate-500 hover:text-rose-400 transition"
+                        >
+                          Report
+                        </button>
+                      </form>
                     </>
                   ) : null}
                 </div>
@@ -281,14 +328,20 @@ export default async function ForumQuestionPage({
                           <span className="text-xs text-slate-500">&bull;</span>
                           <p className="text-xs text-slate-500">Reply</p>
                         </div>
-                        <p className="text-sm leading-6 text-slate-300">{reply.body}</p>
+                        <p className="text-sm leading-6 text-slate-300">
+                          {reply.status === "HIDDEN" ? (
+                            <span className="italic text-slate-500">[This reply was hidden by moderation]</span>
+                          ) : (
+                            reply.body
+                          )}
+                        </p>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {/* Reply Form */}
-                {session?.user && dbQuestion && (
+                {session?.user && dbQuestion && question.status !== "LOCKED" && (
                   <form action={createAnswerAction} className="mt-4 flex gap-3">
                     <input type="hidden" name="questionId" value={dbQuestion.id} />
                     <input type="hidden" name="parentId" value={answer.id} />

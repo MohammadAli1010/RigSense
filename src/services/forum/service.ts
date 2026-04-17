@@ -8,6 +8,7 @@ type CreateQuestionInput = {
   categorySlug: string;
   title: string;
   body: string;
+  tags?: string[];
 };
 
 type CreateAnswerInput = {
@@ -47,6 +48,10 @@ export type MarkSolvedAnswerResult =
   | { status: "question-not-found" }
   | { status: "forbidden" };
 
+export type CreateReportResult =
+  | { status: "reported"; id: string }
+  | { status: "invalid-input" };
+
 export function sortAnswersByAcceptanceAndScore<T extends { isAccepted: boolean; voteScore: number }>(
   items: T[],
 ) {
@@ -83,6 +88,7 @@ export async function createQuestion(input: CreateQuestionInput): Promise<Create
         authorId: input.authorId,
         title: input.title,
         body: input.body,
+        tags: input.tags ?? [],
       },
     });
 
@@ -350,6 +356,55 @@ export async function markSolvedAnswer(
       questionId: input.questionId,
       answerId: input.answerId,
       userId: input.userId,
+    });
+    throw error;
+  }
+}
+
+export async function createReport(input: {
+  reporterId: string;
+  reason: string;
+  questionId?: string;
+  answerId?: string;
+}): Promise<CreateReportResult> {
+  try {
+    if (!input.questionId && !input.answerId) {
+      return { status: "invalid-input" };
+    }
+
+    const report = await prisma.report.create({
+      data: {
+        reporterId: input.reporterId,
+        reason: input.reason,
+        questionId: input.questionId || null,
+        answerId: input.answerId || null,
+      },
+    });
+
+    logger.info("forum.content_reported", {
+      reportId: report.id,
+      reporterId: input.reporterId,
+      questionId: input.questionId,
+      answerId: input.answerId,
+    });
+
+    analytics.track("forum_content_reported", {
+      reportId: report.id,
+      reporterId: input.reporterId,
+      questionId: input.questionId,
+      answerId: input.answerId,
+    });
+
+    return {
+      status: "reported",
+      id: report.id,
+    };
+  } catch (error) {
+    errorReporting.captureException(error, {
+      scope: "forum.create_report",
+      reporterId: input.reporterId,
+      questionId: input.questionId,
+      answerId: input.answerId,
     });
     throw error;
   }

@@ -88,6 +88,7 @@ export type MockForumAnswer = {
   voteScore: number;
   isAccepted: boolean;
   parentId?: string;
+  status?: "ACTIVE" | "HIDDEN" | "LOCKED";
   createdAt: string;
 };
 
@@ -99,6 +100,7 @@ export type MockForumQuestion = {
   authorName: string;
   createdAt: string;
   viewCount: number;
+  status?: "ACTIVE" | "HIDDEN" | "LOCKED";
   tags?: string[];
   answers: MockForumAnswer[];
 };

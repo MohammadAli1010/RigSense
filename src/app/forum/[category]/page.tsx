@@ -74,6 +74,7 @@ export default async function ForumCategoryPage({
         viewCount: question.viewCount,
         isSolved: Boolean(question.solvedAnswerId),
         authorName: question.author.name,
+        tags: question.tags,
       }))
     : getQuestionsByCategory(category).map((question) => ({
         id: question.id,
@@ -83,6 +84,7 @@ export default async function ForumCategoryPage({
         viewCount: question.viewCount,
         isSolved: question.answers.some((answer) => answer.isAccepted),
         authorName: question.authorName,
+        tags: question.tags,
       }));
   const statusMessage = getStatusMessage(status);
 
@@ -131,6 +133,11 @@ export default async function ForumCategoryPage({
               className="min-h-32 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60"
               required
             />
+            <input
+              name="tags"
+              placeholder="Optional: Comma-separated tags (e.g. build-help, gpu, budget)"
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60"
+            />
             <button
               type="submit"
               className="rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
@@ -170,7 +177,19 @@ export default async function ForumCategoryPage({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-white">{question.title}</h2>
-                <p className="mt-3 text-sm leading-7 text-slate-400">{question.body}</p>
+                <p className="mt-3 text-sm leading-7 text-slate-400 line-clamp-2">{question.body}</p>
+                {question.tags && question.tags.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {question.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 bg-slate-900/50"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="text-sm text-slate-400 lg:text-right">
                 <p>{question.answerCount} answers</p>
