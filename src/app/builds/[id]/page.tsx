@@ -162,7 +162,13 @@ export default async function BuildDetailPage({
           <div className="mt-6 space-y-4 text-sm text-slate-300">
             <div className="flex items-center justify-between gap-4">
               <span>Builder</span>
-              <span>{builderName}</span>
+              {dbBuild ? (
+                <Link href={`/users/${dbBuild.userId}`} className="font-medium text-cyan-400 hover:text-cyan-300">
+                  {builderName}
+                </Link>
+              ) : (
+                <span>{builderName}</span>
+              )}
             </div>
             <div className="flex items-center justify-between gap-4">
               <span>Total price</span>

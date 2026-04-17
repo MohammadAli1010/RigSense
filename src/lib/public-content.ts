@@ -593,6 +593,94 @@ export async function getHomePageData() {
   };
 }
 
+export async function getUserProfileData(userId: string) {
+  const user = await safeQuery(() =>
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        bio: true,
+        imageUrl: true,
+        createdAt: true,
+        _count: {
+          select: {
+            builds: { where: { visibility: "PUBLIC" } },
+            questions: true,
+            answers: true,
+          },
+        },
+        builds: {
+          where: { visibility: "PUBLIC" },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
+        questions: {
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: {
+            id: true,
+            title: true,
+            createdAt: true,
+            viewCount: true,
+            _count: {
+              select: { answers: true },
+            },
+          },
+        },
+      },
+    }),
+  );
+
+  if (!user) {
+    return null;
+  }
+
+  // Calculate a mock "reputation" or use actual sum of answer votes
+  const answerVotes = await safeQuery(() =>
+    prisma.answerVote.aggregate({
+      where: { answer: { authorId: userId } },
+      _sum: { value: true },
+    })
+  );
+
+  const reputation = (answerVotes?._sum?.value ?? 0) * 10; // Simple rep calculation
+
+  return {
+    id: user.id,
+    name: user.name,
+    bio: user.bio ?? "This user hasn't added a bio yet.",
+    imageUrl: user.imageUrl,
+    joinedAt: user.createdAt,
+    stats: {
+      publicBuilds: user._count.builds,
+      questions: user._count.questions,
+      answers: user._count.answers,
+      reputation,
+    },
+    builds: user.builds.map((build) => ({
+      id: build.id,
+      title: build.title,
+      description: build.description ?? "No build notes added.",
+      trendScore: build.trendScore,
+      totalPriceCents: build.totalPriceCents,
+      estimatedWattage: build.estimatedWattage,
+      visibility: build.visibility,
+      status: build.status,
+      compatibilityStatus: build.compatibilityStatus,
+      authorName: user.name,
+      tags: deriveBuildTags(build),
+    })),
+    recentQuestions: user.questions.map((q) => ({
+      id: q.id,
+      title: q.title,
+      createdAt: q.createdAt,
+      viewCount: q.viewCount,
+      answerCount: q._count.answers,
+    })),
+  };
+}
+
 export async function getComparePartsData(slugs: string[]) {
   if (!slugs.length) return [];
 

@@ -32,6 +32,7 @@ export default async function TrendingPage() {
               <div className="text-5xl font-semibold text-cyan-200">0{index + 1}</div>
               <div>
                 <h2 className="text-2xl font-semibold text-white">{build.title}</h2>
+                <p className="mt-1 text-sm text-cyan-400 font-medium">By {build.authorName}</p>
                 <p className="mt-3 text-sm leading-7 text-slate-400">{build.description}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {build.tags.map((tag) => (
