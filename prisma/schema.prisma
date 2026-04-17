@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_DATABASE_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -67,38 +67,41 @@ enum JobStatus {
 }
 
 model User {
-  id           String          @id @default(cuid())
-  name         String
-  email        String          @unique
-  passwordHash String
-  bio          String?
-  imageUrl     String?
-  builds       Build[]
-  questions    ForumQuestion[]
-  answers      ForumAnswer[]
-  votes        AnswerVote[]
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  name            String
+  email           String          @unique
+  passwordHash    String
+  bio             String?
+  imageUrl        String?
+  reputationScore Int             @default(0)
+  builds          Build[]
+  questions       ForumQuestion[]
+  answers         ForumAnswer[]
+  votes           AnswerVote[]
+  subscriptions   Subscription[]
+  reports         Report[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 }
 
 model Part {
-  id          String       @id @default(cuid())
-  slug        String       @unique
-  category    PartCategory
-  brand       String
-  name        String
-  description String?
-  imageUrl    String?
-  priceCents  Int
-  priceSource String?      // Source of pricing data (API, SCRAPING, MANUAL, etc.)
-  lastUpdated DateTime?    // When price was last fetched/refreshed
-  specs       Json
-  buildParts  BuildPart[]
-  benchmarks  Benchmark[]
-  offers      Offer[]
+  id           String         @id @default(cuid())
+  slug         String         @unique
+  category     PartCategory
+  brand        String
+  name         String
+  description  String?
+  imageUrl     String?
+  priceCents   Int
+  priceSource  String? // Source of pricing data (API, SCRAPING, MANUAL, etc.)
+  lastUpdated  DateTime? // When price was last fetched/refreshed
+  specs        Json
+  buildParts   BuildPart[]
+  benchmarks   Benchmark[]
+  offers       Offer[]
   priceHistory PriceHistory[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   @@index([category])
   @@index([brand])
@@ -107,23 +110,23 @@ model Part {
 }
 
 model Build {
-  id                  String               @id @default(cuid())
+  id                  String              @id @default(cuid())
   userId              String
   title               String
   description         String?
-  status              BuildStatus          @default(DRAFT)
-  visibility          BuildVisibility      @default(PRIVATE)
-  estimatedWattage    Int                  @default(0)
-  totalPriceCents     Int                  @default(0)
-  compatibilityStatus CompatibilityStatus  @default(WARNING)
-  trendScore          Int                  @default(0)
-  intendedUse         String               @default("Gaming")
-  performanceTier     PerformanceTier      @default(MAINSTREAM)
+  status              BuildStatus         @default(DRAFT)
+  visibility          BuildVisibility     @default(PRIVATE)
+  estimatedWattage    Int                 @default(0)
+  totalPriceCents     Int                 @default(0)
+  compatibilityStatus CompatibilityStatus @default(WARNING)
+  trendScore          Int                 @default(0)
+  intendedUse         String              @default("Gaming")
+  performanceTier     PerformanceTier     @default(MAINSTREAM)
   parts               BuildPart[]
   benchmarks          Benchmark[]
-  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   @@index([userId])
   @@index([visibility, status, trendScore])
@@ -131,27 +134,27 @@ model Build {
 
 model BuildPart {
   id        String    @id @default(cuid())
-  buildId    String
-  partId     String
-  slot       BuildSlot
-  quantity   Int       @default(1)
-  build      Build     @relation(fields: [buildId], references: [id], onDelete: Cascade)
-  part       Part      @relation(fields: [partId], references: [id], onDelete: Cascade)
-  createdAt  DateTime  @default(now())
+  buildId   String
+  partId    String
+  slot      BuildSlot
+  quantity  Int       @default(1)
+  build     Build     @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  part      Part      @relation(fields: [partId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
 
   @@index([buildId])
   @@index([partId])
 }
 
 model Guide {
-  id            String    @id @default(cuid())
-  slug          String    @unique
+  id            String   @id @default(cuid())
+  slug          String   @unique
   title         String
   excerpt       String
   body          String
   coverImageUrl String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Benchmark {
@@ -179,6 +182,19 @@ model Benchmark {
   @@index([buildId])
 }
 
+enum ForumContentStatus {
+  ACTIVE
+  HIDDEN
+  LOCKED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
 model ForumCategory {
   id          String          @id @default(cuid())
   slug        String          @unique
@@ -188,52 +204,92 @@ model ForumCategory {
 }
 
 model ForumQuestion {
-  id             String         @id @default(cuid())
+  id             String             @id @default(cuid())
   categoryId     String
   authorId       String
   title          String
   body           String
-  solvedAnswerId String?        @unique
-  answerCount    Int            @default(0)
-  viewCount      Int            @default(0)
-  category       ForumCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  author         User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  solvedAnswer   ForumAnswer?   @relation("SolvedAnswer", fields: [solvedAnswerId], references: [id], onDelete: SetNull)
-  answers        ForumAnswer[]  @relation("QuestionAnswers")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  status         ForumContentStatus @default(ACTIVE)
+  solvedAnswerId String?            @unique
+  answerCount    Int                @default(0)
+  viewCount      Int                @default(0)
+  category       ForumCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  author         User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  solvedAnswer   ForumAnswer?       @relation("SolvedAnswer", fields: [solvedAnswerId], references: [id], onDelete: SetNull)
+  answers        ForumAnswer[]      @relation("QuestionAnswers")
+  reports        Report[]
+  subscriptions  Subscription[]
+  tags           String[]           @default([])
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   @@index([categoryId])
   @@index([authorId])
+  @@index([status])
 }
 
 model ForumAnswer {
-  id                String          @id @default(cuid())
-  questionId        String
-  authorId          String
-  body              String
-  voteScore         Int             @default(0)
-  isAccepted        Boolean         @default(false)
-  question          ForumQuestion   @relation("QuestionAnswers", fields: [questionId], references: [id], onDelete: Cascade)
-  author            User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  acceptedFor       ForumQuestion?  @relation("SolvedAnswer")
-  votes             AnswerVote[]
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id          String             @id @default(cuid())
+  questionId  String
+  authorId    String
+  parentId    String? // Null if top-level answer, filled if a threaded reply
+  body        String
+  status      ForumContentStatus @default(ACTIVE)
+  voteScore   Int                @default(0)
+  isAccepted  Boolean            @default(false)
+  question    ForumQuestion      @relation("QuestionAnswers", fields: [questionId], references: [id], onDelete: Cascade)
+  author      User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent      ForumAnswer?       @relation("ThreadedReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     ForumAnswer[]      @relation("ThreadedReplies")
+  acceptedFor ForumQuestion?     @relation("SolvedAnswer")
+  votes       AnswerVote[]
+  reports     Report[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
   @@index([questionId])
   @@index([authorId])
+  @@index([parentId])
+  @@index([status])
+}
+
+model Report {
+  id         String         @id @default(cuid())
+  reporterId String
+  questionId String?
+  answerId   String?
+  reason     String
+  status     ReportStatus   @default(PENDING)
+  reporter   User           @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  question   ForumQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answer     ForumAnswer?   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([status])
+  @@index([reporterId])
+}
+
+model Subscription {
+  id         String        @id @default(cuid())
+  userId     String
+  questionId String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   ForumQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime      @default(now())
+
+  @@unique([userId, questionId])
 }
 
 model AnswerVote {
-  id         String       @id @default(cuid())
-  answerId    String
-  userId      String
-  value       Int
-  answer      ForumAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id        String      @id @default(cuid())
+  answerId  String
+  userId    String
+  value     Int
+  answer    ForumAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   @@unique([answerId, userId])
   @@index([userId])
@@ -259,17 +315,17 @@ model BackgroundJob {
 }
 
 model Offer {
-  id          String   @id @default(cuid())
-  part        Part     @relation(fields: [partId], references: [id], onDelete: Cascade)
-  partId      String
-  retailer    String
-  url         String
-  priceCents  Int
+  id           String            @id @default(cuid())
+  part         Part              @relation(fields: [partId], references: [id], onDelete: Cascade)
+  partId       String
+  retailer     String
+  url          String
+  priceCents   Int
   availability OfferAvailability
-  source      String
-  retrievedAt DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  source       String
+  retrievedAt  DateTime          @default(now())
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@index([partId])
   @@index([retrievedAt])
@@ -283,13 +339,13 @@ enum OfferAvailability {
 }
 
 model PriceHistory {
-  id        String   @id @default(cuid())
-  part      Part     @relation(fields: [partId], references: [id], onDelete: Cascade)
-  partId    String
-  priceCents Int
-  source    String
+  id          String   @id @default(cuid())
+  part        Part     @relation(fields: [partId], references: [id], onDelete: Cascade)
+  partId      String
+  priceCents  Int
+  source      String
   retrievedAt DateTime @default(now())
-  createdAt DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([partId, retrievedAt])
 }

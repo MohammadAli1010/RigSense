@@ -292,6 +292,7 @@ async function seedForum(users: Map<string, Awaited<ReturnType<typeof upsertUser
         title: question.title,
         body: question.body,
         viewCount: question.viewCount,
+        tags: question.tags ?? [],
         answerCount: question.answers.length,
         solvedAnswerId: null,
       },
@@ -302,6 +303,7 @@ async function seedForum(users: Map<string, Awaited<ReturnType<typeof upsertUser
         title: question.title,
         body: question.body,
         viewCount: question.viewCount,
+        tags: question.tags ?? [],
         answerCount: question.answers.length,
       },
     });
@@ -320,6 +322,7 @@ async function seedForum(users: Map<string, Awaited<ReturnType<typeof upsertUser
         update: {
           questionId: question.id,
           authorId: answerAuthor.id,
+          parentId: answer.parentId ?? null,
           body: answer.body,
           voteScore: answer.voteScore,
           isAccepted: answer.isAccepted,
@@ -328,6 +331,7 @@ async function seedForum(users: Map<string, Awaited<ReturnType<typeof upsertUser
           id: answer.id,
           questionId: question.id,
           authorId: answerAuthor.id,
+          parentId: answer.parentId ?? null,
           body: answer.body,
           voteScore: answer.voteScore,
           isAccepted: answer.isAccepted,

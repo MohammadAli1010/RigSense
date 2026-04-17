@@ -87,6 +87,7 @@ export type MockForumAnswer = {
   body: string;
   voteScore: number;
   isAccepted: boolean;
+  parentId?: string;
   createdAt: string;
 };
 
@@ -98,6 +99,7 @@ export type MockForumQuestion = {
   authorName: string;
   createdAt: string;
   viewCount: number;
+  tags?: string[];
   answers: MockForumAnswer[];
 };
 
@@ -715,7 +717,7 @@ export const benchmarks: MockBenchmark[] = [
     settings: "Multi-Core",
     confidence: "High",
     notes: "Strong rendering node benchmark results based on CPU/GPU tiering.",
-    buildId: "creator-current-gen",
+    buildId: "creator-current",
   },
   {
     id: "bm-build-budget-1080p",
@@ -730,7 +732,6 @@ export const benchmarks: MockBenchmark[] = [
     settings: "High",
     confidence: "Low",
     notes: "Estimated 1080p performance from aggregated build telemetry.",
-    buildId: "budget-entry-level",
   },
 ];
 
@@ -766,6 +767,7 @@ export const forumQuestions: MockForumQuestion[] = [
     authorName: "Alex Moreno",
     createdAt: "2026-04-05",
     viewCount: 412,
+    tags: ["psu", "nvidia", "build-help"],
     answers: [
       {
         id: "a-750w-1",
@@ -783,6 +785,15 @@ export const forumQuestions: MockForumQuestion[] = [
         isAccepted: false,
         createdAt: "2026-04-05",
       },
+      {
+        id: "a-750w-1-reply",
+        authorName: "Alex Moreno",
+        body: "Thanks Rina, I think I'll grab an 850W unit to be safe since this is a completely new build.",
+        voteScore: 3,
+        isAccepted: false,
+        parentId: "a-750w-1",
+        createdAt: "2026-04-06",
+      },
     ],
   },
   {
@@ -793,6 +804,7 @@ export const forumQuestions: MockForumQuestion[] = [
     authorName: "Nadia Ross",
     createdAt: "2026-04-04",
     viewCount: 365,
+    tags: ["amd", "intel", "creator"],
     answers: [
       {
         id: "a-platform-1",
@@ -820,6 +832,7 @@ export const forumQuestions: MockForumQuestion[] = [
     authorName: "Eli Brooks",
     createdAt: "2026-04-03",
     viewCount: 291,
+    tags: ["gpu", "troubleshooting", "sag"],
     answers: [
       {
         id: "a-sag-1",
@@ -839,6 +852,7 @@ export const forumQuestions: MockForumQuestion[] = [
     authorName: "Priya Nair",
     createdAt: "2026-04-02",
     viewCount: 508,
+    tags: ["1440p", "budget", "raster"],
     answers: [
       {
         id: "a-gpu-1",
