@@ -73,6 +73,9 @@ export async function createQuestionAction(formData: FormData) {
 export async function createAnswerAction(formData: FormData) {
   const user = await requireUser();
   const questionId = String(formData.get("questionId") ?? "").trim();
+  const parentIdRaw = formData.get("parentId");
+  const parentId = parentIdRaw ? String(parentIdRaw).trim() : null;
+  
   const parsed = answerSchema.safeParse({
     body: formData.get("body"),
   });
@@ -88,6 +91,7 @@ export async function createAnswerAction(formData: FormData) {
   const result = await createAnswer({
     authorId: user.id,
     questionId,
+    parentId,
     body: parsed.data.body,
   });
 

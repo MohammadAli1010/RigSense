@@ -90,6 +90,7 @@ export default async function ForumQuestionPage({
         voteScore: answer.voteScore,
         isAccepted: answer.isAccepted,
         authorName: answer.author.name,
+        parentId: answer.parentId ?? undefined,
       }))
     : sortAnswersByAcceptanceAndScore(fallbackQuestion!.answers).map((answer) => ({
         id: answer.id,
@@ -97,6 +98,7 @@ export default async function ForumQuestionPage({
         voteScore: answer.voteScore,
         isAccepted: answer.isAccepted,
         authorName: answer.authorName,
+        parentId: answer.parentId ?? undefined,
       }));
   const statusMessage = getStatusMessage(status);
   const isOwner = Boolean(dbQuestion && session?.user?.id === dbQuestion.authorId);
@@ -106,6 +108,17 @@ export default async function ForumQuestionPage({
   const backHref = dbQuestion ? `/forum/${dbQuestion.category.slug}` : "/forum";
   const backLabel = dbQuestion ? `Back to ${dbQuestion.category.name}` : "Back to forum";
   const answerCount = dbQuestion ? dbQuestion.answerCount : fallbackQuestion!.answers.length;
+
+  const topLevelAnswers = answers.filter((a) => !a.parentId);
+  const repliesByParentId = answers.reduce((acc, answer) => {
+    if (answer.parentId) {
+      if (!acc[answer.parentId]) {
+        acc[answer.parentId] = [];
+      }
+      acc[answer.parentId].push(answer);
+    }
+    return acc;
+  }, {} as Record<string, typeof answers>);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-16 lg:py-24">
@@ -138,6 +151,19 @@ export default async function ForumQuestionPage({
             <span>{question.viewCount} views</span>
             <span>{answerCount} answers</span>
           </div>
+
+          {question.tags && question.tags.length > 0 ? (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {question.tags.map((tag: string) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 bg-slate-900/50"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
@@ -186,13 +212,13 @@ export default async function ForumQuestionPage({
       </section>
 
       <section className="space-y-4">
-        {answers.map((answer) => (
+        {topLevelAnswers.map((answer) => (
           <article
             key={answer.id}
             className="rounded-[2rem] border border-white/10 bg-white/5 p-8"
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-4">
+              <div className="space-y-4 w-full">
                 <div className="flex flex-wrap items-center gap-3">
                   <p className="text-sm font-medium text-white">
                     {answer.authorName}
@@ -244,6 +270,44 @@ export default async function ForumQuestionPage({
                     </>
                   ) : null}
                 </div>
+
+                {/* Nested Replies */}
+                {repliesByParentId[answer.id]?.length > 0 && (
+                  <div className="mt-6 space-y-4 border-l-2 border-white/10 pl-6">
+                    {repliesByParentId[answer.id].map((reply) => (
+                      <div key={reply.id} className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-white">{reply.authorName}</p>
+                          <span className="text-xs text-slate-500">&bull;</span>
+                          <p className="text-xs text-slate-500">Reply</p>
+                        </div>
+                        <p className="text-sm leading-6 text-slate-300">{reply.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Reply Form */}
+                {session?.user && dbQuestion && (
+                  <form action={createAnswerAction} className="mt-4 flex gap-3">
+                    <input type="hidden" name="questionId" value={dbQuestion.id} />
+                    <input type="hidden" name="parentId" value={answer.id} />
+                    <input
+                      type="text"
+                      name="body"
+                      placeholder="Write a reply..."
+                      className="flex-1 rounded-full border border-white/10 bg-slate-950/80 px-4 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-full bg-cyan-400/10 border border-cyan-400/30 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-400 hover:text-slate-950"
+                    >
+                      Reply
+                    </button>
+                  </form>
+                )}
+
               </div>
               <div className="text-left lg:text-right">
                 <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Votes</p>

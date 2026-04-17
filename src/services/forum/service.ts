@@ -14,6 +14,7 @@ type CreateAnswerInput = {
   authorId: string;
   questionId: string;
   body: string;
+  parentId?: string | null;
 };
 
 type VoteAnswerInput = {
@@ -129,6 +130,7 @@ export async function createAnswer(input: CreateAnswerInput): Promise<CreateAnsw
         data: {
           questionId: input.questionId,
           authorId: input.authorId,
+          parentId: input.parentId ?? null,
           body: input.body,
         },
       }),
