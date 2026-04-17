@@ -11,3 +11,4 @@
 
 ○ Compiling /compare ...
  GET /compare?a=nvidia-rtx-5070-ti-founders&b=amd-radeon-rx-9070-xt 200 in 43s (next.js: 42s, application-code: 1009ms)
+ GET /builder 307 in 1459ms (next.js: 1362ms, application-code: 98ms)
