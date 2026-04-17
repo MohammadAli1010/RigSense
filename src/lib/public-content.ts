@@ -594,3 +594,87 @@ export async function getHomePageData() {
         ],
   };
 }
+
+export async function getComparePartsData(slugs: string[]) {
+  if (!slugs.length) return [];
+
+  const dbParts = await safeQuery(() =>
+    prisma.part.findMany({
+      where: {
+        slug: { in: slugs },
+      },
+      include: {
+        benchmarks: true,
+      },
+    }),
+  );
+
+  if (!dbParts || dbParts.length === 0) {
+    // mock fallback
+    const mockParts = slugs.map((slug) => getPartBySlug(slug)).filter(Boolean);
+    return mockParts.map((mockPart) => {
+      const partBenchmarks = mockBenchmarks
+        .filter((b) => b.partSlug === mockPart?.slug)
+        .map((b) =>
+          normalizeBenchmarkRow({
+            ...b,
+            score: b.score ?? null,
+            avgFps: b.avgFps ?? null,
+            unit: b.unit ?? null,
+            scoreType: b.scoreType ?? null,
+            source: b.source ?? null,
+            resolution: b.resolution ?? null,
+            settings: b.settings ?? null,
+            confidence: b.confidence ?? null,
+          }),
+        );
+      
+      return {
+        part: {
+          slug: mockPart!.slug,
+          category: mockPart!.category,
+          categoryPath: mockPart!.categoryPath,
+          brand: mockPart!.brand,
+          name: mockPart!.name,
+          description: mockPart!.description,
+          priceCents: mockPart!.priceCents,
+          specs: mockPart!.specs as Record<string, SpecValue>,
+          highlights: mockPart!.highlights,
+        },
+        benchmarks: partBenchmarks,
+      };
+    });
+  }
+
+  // we have db parts
+  return dbParts.map((dbPart) => {
+    const normalizedPart = normalizePart(dbPart);
+    const relatedBenchmarks = dbPart.benchmarks.map(normalizeBenchmark);
+    
+    // Mix in mock benchmarks if none in DB (for seed consistency)
+    const finalBenchmarks =
+      relatedBenchmarks.length > 0
+        ? relatedBenchmarks
+        : mockBenchmarks
+            .filter((b) => b.partSlug === normalizedPart.slug)
+            .map((b) =>
+              normalizeBenchmarkRow({
+                ...b,
+                score: b.score ?? null,
+                avgFps: b.avgFps ?? null,
+                unit: b.unit ?? null,
+                scoreType: b.scoreType ?? null,
+                source: b.source ?? null,
+                resolution: b.resolution ?? null,
+                settings: b.settings ?? null,
+                confidence: b.confidence ?? null,
+              }),
+            );
+
+    return {
+      part: normalizedPart,
+      benchmarks: finalBenchmarks,
+    };
+  });
+}
+
