@@ -43,8 +43,13 @@ export default async function BenchmarksPage() {
               <p className="text-sm text-slate-400">{benchmark.title}</p>
               <h3 className="mt-2 text-xl font-semibold text-white">{benchmark.workload}</h3>
               <p className="mt-4 text-sm leading-7 text-slate-400">{benchmark.notes}</p>
+              <div className="mt-4 flex flex-col gap-1 text-xs text-slate-500">
+                {benchmark.resolution && <span>Resolution: {benchmark.resolution}</span>}
+                {benchmark.settings && <span>Settings: {benchmark.settings}</span>}
+                {benchmark.source && <span>Source: {benchmark.source}</span>}
+              </div>
               <p className="mt-5 text-2xl font-semibold text-cyan-200">
-                {benchmark.avgFps ? `${benchmark.avgFps} FPS` : `Score ${benchmark.score}`}
+                {benchmark.avgFps ? `${benchmark.avgFps} ${benchmark.unit ?? "FPS"}` : `${benchmark.score} ${benchmark.unit ?? "Score"}`}
               </p>
             </article>
           ))}
@@ -65,8 +70,13 @@ export default async function BenchmarksPage() {
               <p className="text-sm text-slate-400">{benchmark.title}</p>
               <h3 className="mt-2 text-xl font-semibold text-white">{benchmark.workload}</h3>
               <p className="mt-4 text-sm leading-7 text-slate-400">{benchmark.notes}</p>
+              <div className="mt-4 flex flex-col gap-1 text-xs text-slate-500">
+                {benchmark.resolution && <span>Resolution: {benchmark.resolution}</span>}
+                {benchmark.settings && <span>Settings: {benchmark.settings}</span>}
+                {benchmark.source && <span>Source: {benchmark.source}</span>}
+              </div>
               <p className="mt-5 text-2xl font-semibold text-cyan-200">
-                {benchmark.avgFps ? `${benchmark.avgFps} FPS` : `Score ${benchmark.score}`}
+                {benchmark.avgFps ? `${benchmark.avgFps} ${benchmark.unit ?? "FPS"}` : `${benchmark.score} ${benchmark.unit ?? "Score"}`}
               </p>
             </article>
           ))}
