@@ -372,14 +372,13 @@ export async function getPartDetailData(categoryPath: string, slug: string) {
           ? relatedBenchmarks.map(normalizeBenchmark)
           : mockBenchmarks
               .filter((benchmark) => benchmark.partSlug === slug)
-              .map((benchmark) => ({
-                id: benchmark.id,
-                title: benchmark.title,
-                workload: benchmark.workload,
-                score: benchmark.score ?? null,
-                avgFps: benchmark.avgFps ?? null,
-                notes: benchmark.notes,
-              })),
+              .map((benchmark) =>
+                normalizeBenchmarkRow({
+                  ...benchmark,
+                  score: benchmark.score ?? null,
+                  avgFps: benchmark.avgFps ?? null,
+                })
+              ),
     };
   }
 
@@ -401,14 +400,13 @@ export async function getPartDetailData(categoryPath: string, slug: string) {
     relatedParts: recommended.length > 0 ? recommended : getPartsByCategory(categoryPath).filter((part) => part.slug !== slug).slice(0, 4),
     benchmarks: mockBenchmarks
       .filter((benchmark) => benchmark.partSlug === slug)
-      .map((benchmark) => ({
-        id: benchmark.id,
-        title: benchmark.title,
-        workload: benchmark.workload,
-        score: benchmark.score ?? null,
-        avgFps: benchmark.avgFps ?? null,
-        notes: benchmark.notes,
-      })),
+      .map((benchmark) =>
+        normalizeBenchmarkRow({
+          ...benchmark,
+          score: benchmark.score ?? null,
+          avgFps: benchmark.avgFps ?? null,
+        })
+      ),
   };
 }
 

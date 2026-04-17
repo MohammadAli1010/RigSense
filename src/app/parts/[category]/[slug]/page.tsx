@@ -111,7 +111,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
                   <h2 className="text-lg font-semibold text-white">{benchmark.workload}</h2>
                   <p className="mt-2 text-sm text-slate-400">{benchmark.notes}</p>
                   <p className="mt-4 text-2xl font-semibold text-cyan-200">
-                    {benchmark.avgFps ? `${benchmark.avgFps} FPS` : `Score ${benchmark.score}`}
+                    {benchmark.avgFps ? `${benchmark.avgFps} ${benchmark.unit ?? 'FPS'}` : `${benchmark.score} ${benchmark.unit ?? 'Score'}`}
                   </p>
                 </div>
               ))
@@ -143,16 +143,30 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {relatedParts.map((relatedPart) => (
-            <Link
+            <div
               key={relatedPart.slug}
-              href={`/parts/${relatedPart.categoryPath}/${relatedPart.slug}`}
-              className="rounded-[2rem] border border-white/10 bg-slate-950/60 p-6 transition hover:border-cyan-400/40"
+              className="flex flex-col justify-between rounded-[2rem] border border-white/10 bg-slate-950/60 p-6 transition hover:border-cyan-400/40"
             >
-              <h3 className="text-xl font-semibold text-white">{relatedPart.name}</h3>
-              <p className="mt-3 text-sm leading-7 text-slate-400">
-                {relatedPart.description}
-              </p>
-            </Link>
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  <Link href={`/parts/${relatedPart.categoryPath}/${relatedPart.slug}`} className="hover:text-cyan-400">
+                    {relatedPart.name}
+                  </Link>
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-slate-400 line-clamp-2">
+                  {relatedPart.description}
+                </p>
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-4">
+                <span className="text-lg font-medium text-cyan-400">{formatPrice(relatedPart.priceCents)}</span>
+                <Link
+                  href={`/compare?a=${part.slug}&b=${relatedPart.slug}`}
+                  className="rounded-full bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
+                >
+                  Compare
+                </Link>
+              </div>
+            </div>
           ))}
         </div>
       </section>
