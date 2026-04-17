@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 import { saveBuildAction } from "@/actions/builds";
+import { benchmarks } from "@/data/mock-data";
 import type { CategoryPath, MockBuild, MockPart } from "@/data/mock-data";
 import type { BuildEditorDraft, BuildSelections } from "@/lib/build-editor";
 import { emptyBuildSelections } from "@/lib/build-editor";
+import { compareBenchmarks } from "@/lib/compare";
 import { formatPrice, formatSegment, formatSpecValue, formatRelativeTime, isPriceStale } from "@/lib/format";
 import { analyzeBuild } from "@/lib/compatibility";
 import type { RecommendationScore } from "@/services/recommendations/service";
@@ -234,23 +236,57 @@ function SelectionCard({
 
       {recommendations && recommendations.length > 0 && onSelectRecommendation && (
         <div className="mt-5">
-          <p className="text-xs uppercase tracking-[0.25em] text-cyan-200 mb-3">Recommended for your build</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-cyan-200 mb-3">
+            {selectedPart ? "Upgrades & Alternatives" : "Recommended for your build"}
+          </p>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {recommendations.map((rec) => (
-              <button
-                key={rec.part.slug}
-                type="button"
-                onClick={() => onSelectRecommendation(rec.part.slug, "best-value")}
-                className="flex flex-col items-start text-left rounded-3xl border border-white/10 bg-slate-950/40 p-4 transition hover:border-cyan-400/40 hover:bg-slate-950/60"
-              >
-                <p className="text-xs text-slate-400">{rec.part.brand}</p>
-                <p className="mt-1 text-sm font-semibold text-white line-clamp-1">{rec.part.name}</p>
-                <p className="mt-2 text-sm font-semibold text-cyan-200">{formatPrice(rec.part.priceCents)}</p>
-                {rec.reasons[0] && (
-                  <p className="mt-2 text-xs text-slate-400 line-clamp-1">{rec.reasons[0]}</p>
-                )}
-              </button>
-            ))}
+            {recommendations.map((rec) => {
+              let comparisonText = null;
+              
+              if (selectedPart) {
+                 const currentBm = benchmarks.find(b => b.partSlug === selectedPart.slug);
+                 const recBm = benchmarks.find(b => b.partSlug === rec.part.slug);
+                 
+                 if (currentBm && recBm && currentBm.workload === recBm.workload) {
+                    const comp = compareBenchmarks(currentBm as any, recBm as any);
+                    if (comp.winnerId === recBm.id && comp.differencePercent) {
+                        comparisonText = `+${comp.differencePercent.toFixed(1)}% perf in ${recBm.workload}`;
+                    } else if (comp.winnerId === currentBm.id && comp.differencePercent) {
+                        comparisonText = `-${comp.differencePercent.toFixed(1)}% perf in ${recBm.workload}`;
+                    }
+                 }
+              }
+
+              return (
+                <button
+                  key={rec.part.slug}
+                  type="button"
+                  onClick={() => onSelectRecommendation(rec.part.slug, selectedPart ? "upgrade-path" : "best-value")}
+                  className="flex flex-col justify-between items-start text-left rounded-3xl border border-white/10 bg-slate-950/40 p-4 transition hover:border-cyan-400/40 hover:bg-slate-950/60"
+                >
+                  <div className="w-full">
+                    <p className="text-xs text-slate-400">{rec.part.brand}</p>
+                    <p className="mt-1 text-sm font-semibold text-white line-clamp-1">{rec.part.name}</p>
+                    <div className="mt-2 flex items-center justify-between w-full">
+                      <p className="text-sm font-semibold text-cyan-200">{formatPrice(rec.part.priceCents)}</p>
+                      {selectedPart && (
+                        <span className={`text-xs ${rec.part.priceCents > selectedPart.priceCents ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {rec.part.priceCents > selectedPart.priceCents ? '+' : ''}{formatPrice(rec.part.priceCents - selectedPart.priceCents)}
+                        </span>
+                      )}
+                    </div>
+                    {rec.reasons[0] && (
+                      <p className="mt-2 text-xs text-slate-400 line-clamp-1">{rec.reasons[0]}</p>
+                    )}
+                  </div>
+                  {comparisonText && (
+                    <div className={`mt-3 pt-3 border-t border-white/10 w-full text-xs font-medium ${comparisonText.startsWith('+') ? 'text-cyan-400' : 'text-rose-400'}`}>
+                      {comparisonText}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -516,7 +552,12 @@ export function BuilderWorkbench({
                       currentBuild: selectedParts,
                       limit: 3,
                     })
-                  : undefined
+                  : getRecommendations({
+                      strategy: "upgrade-path",
+                      targetSlot: slot.categoryPath,
+                      currentBuild: selectedParts,
+                      limit: 3,
+                    }).filter(r => r.part.slug !== selections[slot.key]).slice(0, 3)
               }
               onSelectRecommendation={(slug) =>
                 setSelections((current: BuildSelections) => ({
