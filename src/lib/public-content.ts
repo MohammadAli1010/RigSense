@@ -58,6 +58,12 @@ export type PublicBenchmark = {
   workload: string;
   score: number | null;
   avgFps: number | null;
+  unit: string | null;
+  scoreType: string | null;
+  source: string | null;
+  resolution: string | null;
+  settings: string | null;
+  confidence: string | null;
   notes: string;
 };
 
@@ -164,6 +170,12 @@ function normalizeBenchmark(benchmark: Benchmark): PublicBenchmark {
     workload: benchmark.workload,
     score: benchmark.score,
     avgFps: benchmark.avgFps,
+    unit: benchmark.unit,
+    scoreType: benchmark.scoreType,
+    source: benchmark.source,
+    resolution: benchmark.resolution,
+    settings: benchmark.settings,
+    confidence: benchmark.confidence,
     notes: benchmark.notes ?? "",
   };
 }
@@ -174,6 +186,12 @@ function normalizeBenchmarkRow(benchmark: {
   workload: string;
   score: number | null;
   avgFps: number | null;
+  unit?: string | null;
+  scoreType?: string | null;
+  source?: string | null;
+  resolution?: string | null;
+  settings?: string | null;
+  confidence?: string | null;
   notes: string;
 }): PublicBenchmark {
   return {
@@ -182,6 +200,12 @@ function normalizeBenchmarkRow(benchmark: {
     workload: benchmark.workload,
     score: benchmark.score,
     avgFps: benchmark.avgFps,
+    unit: benchmark.unit ?? null,
+    scoreType: benchmark.scoreType ?? null,
+    source: benchmark.source ?? null,
+    resolution: benchmark.resolution ?? null,
+    settings: benchmark.settings ?? null,
+    confidence: benchmark.confidence ?? null,
     notes: benchmark.notes,
   };
 }
@@ -433,6 +457,12 @@ export async function getBenchmarksOverviewData() {
           workload: benchmark.workload,
           score: benchmark.score ?? null,
           avgFps: benchmark.avgFps ?? null,
+          unit: benchmark.unit ?? null,
+          scoreType: benchmark.scoreType ?? null,
+          source: benchmark.source ?? null,
+          resolution: benchmark.resolution ?? null,
+          settings: benchmark.settings ?? null,
+          confidence: benchmark.confidence ?? null,
           notes: benchmark.notes,
         }));
 

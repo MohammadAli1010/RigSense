@@ -152,6 +152,12 @@ model Benchmark {
   workload   String
   score      Int?
   avgFps     Int?
+  unit       String?
+  scoreType  String?
+  source     String?
+  resolution String?
+  settings   String?
+  confidence String?
   notes      String?
   partId     String?
   buildId    String?

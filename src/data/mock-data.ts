@@ -47,6 +47,12 @@ export type MockBenchmark = {
   workload: string;
   score?: number;
   avgFps?: number;
+  unit?: string;
+  scoreType?: string;
+  source?: string;
+  resolution?: string;
+  settings?: string;
+  confidence?: string;
   notes: string;
   partSlug?: string;
   buildId?: string;
