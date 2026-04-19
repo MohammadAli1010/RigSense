@@ -6,6 +6,7 @@ import {
   markSolvedAnswerAction,
   voteAnswerAction,
   reportContentAction,
+  toggleSubscriptionAction,
 } from "@/actions/forum";
 import { auth } from "@/auth";
 import { getForumQuestionById } from "@/data/mock-data";
@@ -60,6 +61,12 @@ export default async function ForumQuestionPage({
               name: true,
             },
           },
+          subscriptions: session?.user ? {
+            where: {
+              userId: session.user.id,
+            },
+            take: 1,
+          } : false,
           answers: {
             include: {
               author: {
@@ -106,6 +113,7 @@ export default async function ForumQuestionPage({
         status: answer.status,
       }));
   const statusMessage = getStatusMessage(status);
+  const isSubscribed = Boolean(dbQuestion?.subscriptions && dbQuestion.subscriptions.length > 0);
   const isOwner = Boolean(dbQuestion && session?.user?.id === dbQuestion.authorId);
   const questionAuthorName = dbQuestion
     ? dbQuestion.author.name
@@ -150,6 +158,21 @@ export default async function ForumQuestionPage({
             <span className="inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-amber-200">
               Locked
             </span>
+          ) : null}
+          {session?.user && dbQuestion ? (
+            <form action={toggleSubscriptionAction} className="ml-auto">
+              <input type="hidden" name="questionId" value={dbQuestion.id} />
+              <button
+                type="submit"
+                className={`rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-[0.1em] transition ${
+                  isSubscribed 
+                    ? "border-slate-500/50 bg-slate-500/10 text-slate-300 hover:border-rose-400/50 hover:text-rose-400" 
+                    : "border-cyan-400/30 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400 hover:text-slate-900"
+                }`}
+              >
+                {isSubscribed ? "Unfollow" : "Follow"}
+              </button>
+            </form>
           ) : null}
         </div>
           <h1 className="text-4xl font-semibold tracking-tight text-white">

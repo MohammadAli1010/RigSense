@@ -10,6 +10,7 @@ import {
   markSolvedAnswer,
   voteAnswer,
   createReport,
+  toggleSubscription,
 } from "@/services/forum/service";
 
 const questionSchema = z.object({
@@ -183,4 +184,24 @@ export async function reportContentAction(formData: FormData) {
   }
   
   redirect("/forum");
+}
+
+export async function toggleSubscriptionAction(formData: FormData) {
+  const user = await requireUser();
+  const questionId = String(formData.get("questionId") ?? "").trim();
+
+  if (!questionId) {
+    redirect("/forum");
+  }
+
+  const result = await toggleSubscription({
+    userId: user.id,
+    questionId,
+  });
+
+  if (result.status === "question-not-found") {
+    redirect("/forum");
+  }
+
+  redirectToQuestion(result.questionId, result.status);
 }

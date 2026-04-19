@@ -52,6 +52,11 @@ export type CreateReportResult =
   | { status: "reported"; id: string }
   | { status: "invalid-input" };
 
+export type ToggleSubscriptionResult =
+  | { status: "subscribed"; questionId: string }
+  | { status: "unsubscribed"; questionId: string }
+  | { status: "question-not-found" };
+
 export function sortAnswersByAcceptanceAndScore<T extends { isAccepted: boolean; voteScore: number }>(
   items: T[],
 ) {
@@ -89,6 +94,9 @@ export async function createQuestion(input: CreateQuestionInput): Promise<Create
         title: input.title,
         body: input.body,
         tags: input.tags ?? [],
+        subscriptions: {
+          create: [{ userId: input.authorId }],
+        },
       },
     });
 
@@ -235,16 +243,28 @@ export async function voteAnswer(input: VoteAnswerInput): Promise<VoteAnswerResu
       });
     }
 
-    await prisma.forumAnswer.update({
-      where: {
-        id: input.answerId,
-      },
-      data: {
-        voteScore: {
-          increment: delta,
+    await prisma.$transaction([
+      prisma.forumAnswer.update({
+        where: {
+          id: input.answerId,
         },
-      },
-    });
+        data: {
+          voteScore: {
+            increment: delta,
+          },
+        },
+      }),
+      prisma.user.update({
+        where: {
+          id: answer.authorId,
+        },
+        data: {
+          reputationScore: {
+            increment: delta,
+          },
+        },
+      }),
+    ]);
 
     logger.info("forum.answer_voted", {
       questionId: input.questionId,
@@ -405,6 +425,53 @@ export async function createReport(input: {
       reporterId: input.reporterId,
       questionId: input.questionId,
       answerId: input.answerId,
+    });
+    throw error;
+  }
+}
+
+export async function toggleSubscription(input: {
+  userId: string;
+  questionId: string;
+}): Promise<ToggleSubscriptionResult> {
+  try {
+    const question = await prisma.forumQuestion.findUnique({
+      where: { id: input.questionId },
+    });
+
+    if (!question) {
+      return { status: "question-not-found" };
+    }
+
+    const existing = await prisma.subscription.findUnique({
+      where: {
+        userId_questionId: {
+          userId: input.userId,
+          questionId: input.questionId,
+        },
+      },
+    });
+
+    if (existing) {
+      await prisma.subscription.delete({
+        where: { id: existing.id },
+      });
+      return { status: "unsubscribed", questionId: input.questionId };
+    }
+
+    await prisma.subscription.create({
+      data: {
+        userId: input.userId,
+        questionId: input.questionId,
+      },
+    });
+
+    return { status: "subscribed", questionId: input.questionId };
+  } catch (error) {
+    errorReporting.captureException(error, {
+      scope: "forum.toggle_subscription",
+      userId: input.userId,
+      questionId: input.questionId,
     });
     throw error;
   }
