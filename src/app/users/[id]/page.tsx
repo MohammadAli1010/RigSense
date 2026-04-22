@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { getUserProfileData } from "@/lib/public-content";
@@ -23,9 +24,9 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
       {/* Profile Header */}
       <section className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
         <div className="flex items-center gap-6">
-          <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-3xl font-bold text-white shadow-inner">
+          <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-3xl font-bold text-white shadow-inner relative overflow-hidden">
             {user.imageUrl ? (
-              <img src={user.imageUrl} alt={user.name} className="h-full w-full rounded-full object-cover" />
+              <Image src={user.imageUrl} alt={user.name} fill className="object-cover" />
             ) : (
               user.name.charAt(0).toUpperCase()
             )}
@@ -91,7 +92,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
           </div>
         ) : (
           <div className="rounded-3xl border border-dashed border-white/10 p-8 text-center">
-            <p className="text-slate-400">{user.name} hasn't published any public builds yet.</p>
+            <p className="text-slate-400">{user.name} hasn&apos;t published any public builds yet.</p>
           </div>
         )}
       </section>

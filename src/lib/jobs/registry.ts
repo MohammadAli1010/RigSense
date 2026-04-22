@@ -22,9 +22,9 @@ const healthCheckJob: JobDefinition = {
 const priceRefreshJob: JobDefinition = {
   type: "catalog.price-refresh",
   description: "Refreshes part pricing from external providers",
-  async handler(payload: any, context) {
+  async handler(payload: Record<string, unknown> | null, context) {
     // If partId provided, refresh single part. Otherwise, find all stale parts and schedule.
-    if (payload?.partId) {
+    if (payload?.partId && typeof payload.partId === "string") {
       await pricingService.refreshPartPricing(payload.partId);
       return { summary: `Refreshed pricing for part ${payload.partId}` };
     }

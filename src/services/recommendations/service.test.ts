@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { getRecommendations, RecommendationOptions } from "./service";
-import { emptyBuildSelections } from "@/lib/build-editor";
 
 describe("recommendations service", () => {
   it("recommends alternative parts within budget constraints", () => {

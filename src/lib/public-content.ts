@@ -22,6 +22,7 @@ import {
   getTrendingBuilds,
   guides as mockGuides,
   publicBuilds,
+  type CategoryPath,
 } from "@/data/mock-data";
 import { getRecommendations } from "@/services/recommendations/service";
 import { safeDatabaseQuery } from "@/lib/database-reachability";
@@ -268,12 +269,12 @@ export async function getPartCategoryData(
     return null;
   }
 
-  const where: any = { category: categoryInfo.category };
+  const where: Record<string, unknown> = { category: categoryInfo.category };
   if (search) {
     where.name = { contains: search, mode: "insensitive" };
   }
 
-  const orderBy: any = {};
+  const orderBy: Record<string, "asc" | "desc"> = {};
   if (sort === "price-asc") orderBy.priceCents = "asc";
   else if (sort === "price-desc") orderBy.priceCents = "desc";
   else orderBy.name = "asc";
@@ -335,7 +336,7 @@ export async function getPartDetailData(categoryPath: string, slug: string) {
     if (mockPartBase) {
       const recommended = getRecommendations({
         strategy: "balanced",
-        targetSlot: categoryPath as any,
+        targetSlot: categoryPath as CategoryPath,
         currentBuild: { storage: [] },
         budgetCapCents: mockPartBase.priceCents * 1.5,
         limit: 5
@@ -349,7 +350,7 @@ export async function getPartDetailData(categoryPath: string, slug: string) {
          );
          finalRelatedParts = recommended.map(rp => {
             const dbMatch = dbRelatedParts?.find(dbp => dbp.slug === rp.slug);
-            return dbMatch ? normalizePart(dbMatch) : rp as any;
+            return dbMatch ? normalizePart(dbMatch) : rp as unknown as PublicPart;
          });
       }
     }
@@ -390,11 +391,11 @@ export async function getPartDetailData(categoryPath: string, slug: string) {
   
   const recommended = getRecommendations({
     strategy: "balanced",
-    targetSlot: categoryPath as any,
+    targetSlot: categoryPath as CategoryPath,
     currentBuild: { storage: [] },
     budgetCapCents: mockPartBase.priceCents * 1.5,
     limit: 5
-  }).filter(r => r.part.slug !== slug).slice(0, 4).map(r => r.part as any);
+  }).filter(r => r.part.slug !== slug).slice(0, 4).map(r => r.part as unknown as PublicPart);
 
   return {
     categoryInfo,

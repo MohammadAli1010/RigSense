@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 
 import { saveBuildAction } from "@/actions/builds";
 import { benchmarks } from "@/data/mock-data";
 import type { CategoryPath, MockBuild, MockPart } from "@/data/mock-data";
 import type { BuildEditorDraft, BuildSelections } from "@/lib/build-editor";
+import type { PublicBenchmark } from "@/lib/public-content";
 import { emptyBuildSelections } from "@/lib/build-editor";
 import { compareBenchmarks } from "@/lib/compare";
 import { formatPrice, formatSegment, formatSpecValue, formatRelativeTime, isPriceStale } from "@/lib/format";
@@ -248,7 +249,7 @@ function SelectionCard({
                  const recBm = benchmarks.find(b => b.partSlug === rec.part.slug);
                  
                  if (currentBm && recBm && currentBm.workload === recBm.workload) {
-                    const comp = compareBenchmarks(currentBm as any, recBm as any);
+                    const comp = compareBenchmarks(currentBm as unknown as PublicBenchmark, recBm as unknown as PublicBenchmark);
                     if (comp.winnerId === recBm.id && comp.differencePercent) {
                         comparisonText = `+${comp.differencePercent.toFixed(1)}% perf in ${recBm.workload}`;
                     } else if (comp.winnerId === currentBm.id && comp.differencePercent) {
@@ -342,49 +343,24 @@ export function BuilderWorkbench({
   initialDraft,
   status,
 }: BuilderWorkbenchProps) {
-  const [title, setTitle] = useState(initialDraft?.title ?? "New RigSense Build");
-  const [description, setDescription] = useState(initialDraft?.description ?? "");
+  const initialTitle = initialDraft?.title ?? "New RigSense Build";
+  const initialDescription = initialDraft?.description ?? "";
+  const initialSelections = initialDraft?.selections ?? emptyBuildSelections;
+
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
   const [selections, setSelections] = useState<BuildSelections>(
-    initialDraft?.selections ?? emptyBuildSelections,
+    initialSelections,
   );
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const initialRender = useRef(true);
-  const formRef = useRef<HTMLFormElement>(null);
-
   const serializedSelections = JSON.stringify(selections);
+  const initialSerializedSelections = JSON.stringify(initialSelections);
+  const isDirty =
+    title !== initialTitle ||
+    description !== initialDescription ||
+    serializedSelections !== initialSerializedSelections;
 
-  const requestAutosave = useCallback(async () => {
-    if (!formRef.current) return;
-    setIsSaving(true);
-    const formData = new FormData(formRef.current);
-    formData.set("intent", "save");
-    try {
-      // Just a background fire-and-forget for autosave so it doesn't navigate
-      // React 18 / Next.js Server actions support direct invocation, but since it uses redirect in the action,
-      // it might be cleaner to just let the standard form do the hard saves, or we catch the redirect.
-      // Actually, since saveBuildAction redirects, an autosave fetch needs a different action or we prevent default.
-      // For now, we'll visually track changes and prompt the user to save, acting as a "dirty" state,
-      // or we can just say "Unsaved changes"
-      // Wait, a true autosave with redirecting actions is tricky without a dedicated autosave action.
-      // Let's implement a 'dirty' state instead to satisfy the spirit without breaking navigation.
-    } finally {
-      setIsSaving(false);
-    }
-  }, []);
-
-  const [isDirty, setIsDirty] = useState(false);
-
-  useEffect(() => {
-    if (initialRender.current) {
-      initialRender.current = false;
-      return;
-    }
-    setIsDirty(true);
-  }, [title, description, serializedSelections]);
-
-  const selectedParts = {
+  const selectedParts = useMemo(() => ({
     cpu: getPart(parts, selections.cpu),
     motherboard: getPart(parts, selections.motherboard),
     gpu: getPart(parts, selections.gpu),
@@ -396,9 +372,32 @@ export function BuilderWorkbench({
     psu: getPart(parts, selections.psu),
     pcCase: getPart(parts, selections.pcCase),
     cooler: getPart(parts, selections.cooler),
-  };
+  }), [parts, selections]);
 
-  const analysis = analyzeBuild(selectedParts);
+  const analysis = useMemo(() => analyzeBuild(selectedParts), [selectedParts]);
+  
+  const recommendationsBySlot = useMemo(() => {
+    const recs: Record<string, ReturnType<typeof getRecommendations>> = {};
+    for (const slot of slotSections) {
+      if (!selections[slot.key as keyof typeof selections]) {
+        recs[slot.key] = getRecommendations({
+          strategy: "best-value",
+          targetSlot: slot.categoryPath,
+          currentBuild: selectedParts,
+          limit: 3,
+        });
+      } else {
+        recs[slot.key] = getRecommendations({
+          strategy: "upgrade-path",
+          targetSlot: slot.categoryPath,
+          currentBuild: selectedParts,
+          limit: 3,
+        }).filter(r => r.part.slug !== selections[slot.key as keyof typeof selections]).slice(0, 3);
+      }
+    }
+    return recs;
+  }, [selections, selectedParts]);
+
   const selectedCatalogParts = [
     selectedParts.cpu,
     selectedParts.motherboard,
@@ -423,7 +422,7 @@ export function BuilderWorkbench({
     analysis.errors.length === 0 && analysis.requiredSlotsMissing.length === 0;
 
   return (
-    <form ref={formRef} action={saveBuildAction} className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-6 py-16 lg:py-24">
+    <form action={saveBuildAction} className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-6 py-16 lg:py-24">
       <input type="hidden" name="buildId" value={initialDraft?.id ?? ""} readOnly />
       <input type="hidden" name="selections" value={serializedSelections} readOnly />
 
@@ -544,21 +543,7 @@ export function BuilderWorkbench({
                 }))
               }
               selectedPart={selectedParts[slot.key as keyof typeof selectedParts] as MockPart}
-              recommendations={
-                !selections[slot.key]
-                  ? getRecommendations({
-                      strategy: "best-value",
-                      targetSlot: slot.categoryPath,
-                      currentBuild: selectedParts,
-                      limit: 3,
-                    })
-                  : getRecommendations({
-                      strategy: "upgrade-path",
-                      targetSlot: slot.categoryPath,
-                      currentBuild: selectedParts,
-                      limit: 3,
-                    }).filter(r => r.part.slug !== selections[slot.key]).slice(0, 3)
-              }
+              recommendations={recommendationsBySlot[slot.key as keyof typeof recommendationsBySlot] || []}
               onSelectRecommendation={(slug) =>
                 setSelections((current: BuildSelections) => ({
                   ...current,
@@ -742,7 +727,7 @@ export function BuilderWorkbench({
             </div>
             <div className="mt-5 space-y-3">
               {selectedCatalogParts.length > 0 ? (
-                selectedCatalogParts.map((part, index) => (
+                selectedCatalogParts.map((part) => (
                   <div
                     key={`${part.categoryPath}-${part.slug}`}
                     className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3"
@@ -780,7 +765,6 @@ export function BuilderWorkbench({
                 type="submit"
                 name="intent"
                 value="save"
-                onClick={() => setIsDirty(false)}
                 className="rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
               >
                 {initialDraft?.id ? "Update draft" : "Save draft"}

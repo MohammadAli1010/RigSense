@@ -40,11 +40,11 @@ export async function saveBuildAction(formData: FormData) {
   });
 
   if (!selections) {
-    builderRedirect(buildId, "invalid-build-data");
+    return builderRedirect(buildId, "invalid-build-data");
   }
 
   if (!metadata.success) {
-    builderRedirect(buildId, "title-required");
+    return builderRedirect(buildId, "title-required");
   }
 
   const validSelections = selections;
@@ -61,24 +61,24 @@ export async function saveBuildAction(formData: FormData) {
 
   switch (result.status) {
     case "invalid-part-selection":
-      builderRedirect(buildId, "invalid-part-selection");
+      return builderRedirect(buildId, "invalid-part-selection");
     case "seed-parts-required":
-      builderRedirect(buildId, "seed-parts-required");
+      return builderRedirect(buildId, "seed-parts-required");
     case "forbidden":
-      redirect("/builds");
+      return redirect("/builds");
     case "completion-blocked":
       revalidatePath("/builder");
       revalidatePath("/builds");
       revalidatePath(`/builds/${result.buildId}`);
       revalidatePath("/trending");
-      builderRedirect(result.buildId, result.status);
+      return builderRedirect(result.buildId, result.status);
     case "saved":
     case "completed":
       revalidatePath("/builder");
       revalidatePath("/builds");
       revalidatePath(`/builds/${result.buildId}`);
       revalidatePath("/trending");
-      builderRedirect(result.buildId, result.status);
+      return builderRedirect(result.buildId, result.status);
   }
 }
 

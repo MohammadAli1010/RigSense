@@ -22,6 +22,9 @@ const { prismaMock, analyticsMock, errorReportingMock, loggerMock } = vi.hoisted
       delete: vi.fn(),
       update: vi.fn(),
     },
+    user: {
+      update: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
   analyticsMock: {
@@ -74,6 +77,7 @@ describe("forum service", () => {
     prismaMock.answerVote.create.mockReset();
     prismaMock.answerVote.delete.mockReset();
     prismaMock.answerVote.update.mockReset();
+    prismaMock.user.update.mockReset();
     prismaMock.$transaction.mockReset();
   });
 

@@ -93,8 +93,6 @@ export default async function BuildDetailPage({
     notFound();
   }
 
-  const mockBuild = fallbackBuild!;
-
   const buildParts = dbBuild
     ? dbBuild.parts.map((item) => ({
         slug: item.part.slug,
@@ -103,14 +101,14 @@ export default async function BuildDetailPage({
         priceCents: item.part.priceCents,
         categoryPath: getCategoryPathForCategory(item.part.category) ?? "parts",
       }))
-    : getBuildParts(mockBuild);
+    : fallbackBuild ? getBuildParts(fallbackBuild) : [];
   const buildBenchmarks = getBenchmarksForBuild(build.id);
   const isOwner = Boolean(dbBuild && session?.user?.id === dbBuild.userId);
   const statusMessage = getStatusMessage(statusParam);
   const buildLabels = dbBuild
     ? [dbBuild.status, dbBuild.visibility, dbBuild.compatibilityStatus]
-    : mockBuild.tags;
-  const builderName = dbBuild ? dbBuild.user.name : mockBuild.authorName;
+    : fallbackBuild ? fallbackBuild.tags : [];
+  const builderName = dbBuild ? dbBuild.user.name : fallbackBuild?.authorName ?? "Unknown";
   const buildDescription = build.description ?? "No build notes added yet.";
 
   return (

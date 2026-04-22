@@ -35,7 +35,7 @@ export class PricingService {
     }
 
     if (allOffers.length > 0) {
-      await prisma.$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx) => {
         // Delete old offers
         await tx.offer.deleteMany({
           where: { partId: part.id }

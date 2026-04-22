@@ -48,7 +48,7 @@ export function scorePart(
     }
   } else {
     // We are replacing a specific slot
-    (tempBuild as any)[slotKey] = candidate;
+    (tempBuild as unknown as Record<string, MockPart | undefined>)[slotKey] = candidate;
   }
 
   const analysisBefore = analyzeBuild(currentBuild);

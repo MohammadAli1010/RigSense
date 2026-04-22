@@ -71,6 +71,8 @@ cp .env.example .env
 cp .env.example .env.local
 ```
 
+Use a long random value for `AUTH_SECRET`, and keep `.env` / `.env.local` untracked local files only. Do not force-add them to git.
+
 Default local database connection:
 
 ```env

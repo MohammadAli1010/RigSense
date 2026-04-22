@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { getComparePartsData } from "@/lib/public-content";
 import { formatPrice } from "@/lib/format";
 import { compareBenchmarks } from "@/lib/compare";

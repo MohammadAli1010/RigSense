@@ -23,16 +23,15 @@ export function formatSpecValue(value: number | string | string[]) {
 
 export function formatRelativeTime(date: Date) {
   const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-  const diffInSeconds = (date.getTime() - Date.now()) / 1000;
+  const diffInSeconds = Math.round((date.getTime() - Date.now()) / 1000);
   const diffInMinutes = Math.round(diffInSeconds / 60);
   const diffInHours = Math.round(diffInMinutes / 60);
   const diffInDays = Math.round(diffInHours / 24);
 
-  if (Math.abs(diffInDays) > 0) return rtf.format(diffInDays, "day");
-  if (Math.abs(diffInHours) > 0) return rtf.format(diffInHours, "hour");
-  if (Math.abs(diffInMinutes) > 0) return rtf.format(diffInMinutes, "minute");
-  
-  return rtf.format(Math.round(diffInSeconds), "second");
+  if (Math.abs(diffInSeconds) < 60) return rtf.format(diffInSeconds, "second");
+  if (Math.abs(diffInMinutes) < 60) return rtf.format(diffInMinutes, "minute");
+  if (Math.abs(diffInHours) < 24) return rtf.format(diffInHours, "hour");
+  return rtf.format(diffInDays, "day");
 }
 
 export function isPriceStale(date: Date) {
