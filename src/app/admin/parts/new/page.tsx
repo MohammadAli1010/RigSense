@@ -4,7 +4,7 @@ import { PartCategory } from "@prisma/client";
 import Link from "next/link";
 
 export default async function NewPartPage() {
-  await requireRole(["MODERATOR", "ADMIN"]);
+  await requireRole(["EDITOR", "ADMIN"]);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -44,6 +44,22 @@ export default async function NewPartPage() {
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">Description (Optional)</label>
             <textarea id="description" name="description" rows={4} className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-blue-500 focus:border-blue-500"></textarea>
+          </div>
+
+          <div>
+            <label htmlFor="imageUrl" className="block text-sm font-medium text-slate-700 mb-1">Image URL (Optional)</label>
+            <input type="url" id="imageUrl" name="imageUrl" className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+
+          <div>
+            <label htmlFor="specs" className="block text-sm font-medium text-slate-700 mb-1">Specs JSON</label>
+            <textarea
+              id="specs"
+              name="specs"
+              rows={8}
+              defaultValue={"{}"}
+              className="w-full rounded border border-slate-300 px-3 py-2 font-mono text-sm focus:border-blue-500 focus:ring-blue-500"
+            />
           </div>
 
           <div className="flex justify-end gap-4 pt-4 border-t border-slate-100">

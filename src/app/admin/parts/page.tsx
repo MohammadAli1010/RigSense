@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import Link from "next/link";
 
 export default async function AdminPartsPage() {
-  await requireRole(["MODERATOR", "ADMIN"]);
+  await requireRole(["EDITOR", "ADMIN"]);
 
   const parts = await prisma.part.findMany({
     orderBy: { createdAt: "desc" },
