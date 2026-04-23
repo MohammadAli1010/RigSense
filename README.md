@@ -2,9 +2,9 @@
 
 RigSense is a custom PC building platform focused on part discovery, private build planning, public build showcases, benchmarks, guides, and community Q&A.
 
-The current codebase includes the foundational app shell, credentials-based auth, Prisma schema, protected account routes, and seeded public pages for the catalog, guides, benchmarks, trending builds, and forum.
+The current codebase includes a production-shaped app shell, credentials-based auth with role-aware admin access, Prisma-backed content and workflow models, protected account routes, public discovery pages, builder flows, community tools, and an internal admin CMS.
 
-Milestones 1-5 (Auth, Catalog, Builder Lifecycle, Recommendations, Benchmarks) are now fully implemented and passing service-level tests.
+Milestones 1-8 are implemented in the codebase. The current app includes the core product plus admin CMS, moderation, and operational tooling, with Milestone 9 focused on final production hardening and launch readiness.
 
 ## Stack
 
@@ -22,14 +22,28 @@ Milestones 1-5 (Auth, Catalog, Builder Lifecycle, Recommendations, Benchmarks) a
 Implemented now:
 
 - Dark-first app shell with shared navigation and footer
-- Register, login, logout, and protected profile flow
-- Prisma schema for users, parts, builds, guides, benchmarks, forum, and answer votes
+- Register, login, logout, protected profile flow, and role-aware admin access
+- Prisma schema for users, roles, parts, offers, builds, guides, benchmarks, forum, subscriptions, reports, background jobs, featured modules, operational settings, and audit logs
 - Prisma migration and seed support for local development
-- Interactive PC builder with compatibility analysis, autosaving, and clone/fork flows
+- Interactive PC builder with compatibility analysis, clone/fork flows, and database-backed save/publish lifecycle
 - Database-backed saved builds, completion, publish/unpublish flow, and visibility toggles
-- A deterministic recommendation engine scoring parts by compatibility, value, and budget
+- Deterministic recommendation engine scoring parts by compatibility, value, and budget
 - A dedicated side-by-side benchmark `/compare` view with inline benchmark metrics in the builder
-- Database-backed forum questions, answers, voting, and solved answers
+- Database-backed forum questions, answers, nested replies, voting, solved answers, subscriptions, reporting, and moderation states
+- Public user profile pages and public build detail pages
+- Admin CMS for:
+  - parts and manual catalog correction
+  - retailer offers and fallback pricing entries
+  - guides with draft/publish workflow
+  - benchmarks with revision history
+  - forum taxonomy
+  - featured modules
+  - operational settings
+- Moderation and operations tooling for:
+  - report queue review and enforcement
+  - background job monitoring and retry flows
+  - audit log review
+  - user role management
 - Public pages for:
   - parts catalog
   - part category pages
@@ -39,14 +53,15 @@ Implemented now:
   - trending builds
   - forum categories and question detail pages
   - public build detail pages
+  - public user profile pages
 
 Still intentionally deferred from v1:
 
-- external pricing APIs
-- advanced recommendation engine (v2)
-- richer threaded forum model
-- admin CMS / moderation dashboards
-- automated benchmark ingestion
+- external pricing providers beyond the current internal/manual offer workflow
+- more advanced recommendation inputs and upgrade-planning logic
+- deeper benchmark ingestion automation and richer compare UX
+- end-to-end smoke coverage and deployment/rollback operations for final launch
+- broader production hardening work from Milestone 9
 
 ## Local Setup
 
@@ -117,6 +132,8 @@ npm run db:generate
 npm run db:migrate
 ```
 
+If you are syncing a fresh local database against the latest admin/CMS schema changes, `npx prisma db push` is also acceptable for local-only setup.
+
 ### 6. Start the app
 
 ```bash
@@ -173,6 +190,20 @@ Protected routes:
 - `/builder`
 - `/builds`
 
+Admin routes:
+
+- `/admin/parts`
+- `/admin/offers`
+- `/admin/guides`
+- `/admin/benchmarks`
+- `/admin/categories`
+- `/admin/featured-modules`
+- `/admin/settings`
+- `/admin/users`
+- `/admin/moderation`
+- `/admin/jobs`
+- `/admin/audit`
+
 ## Project Structure
 
 ```text
@@ -192,17 +223,19 @@ compose.yaml
 ## Notes
 
 - Builds are private by default in the product design.
-- Guides and forum pages are intentionally public.
+- Guides and forum pages are intentionally public, but unpublished guides are only visible through the admin CMS.
 - Forum question detail uses `/forum/questions/[questionId]` to avoid a route collision with `/forum/[category]`.
 - Public discovery pages prefer Prisma-backed content and fall back to `src/data/mock-data.ts` when the database is unavailable.
 - Core mutation logic now lives in `src/services/` so server actions stay thin and reusable.
 - Runtime env validation lives in `src/lib/env.ts` and is loaded by server-side infra modules.
 - Background jobs use the `BackgroundJob` Prisma model and the registry/service under `src/lib/jobs/`.
+- High-impact admin and moderation actions are recorded in the `AuditLog` model and surfaced through `/admin/audit`.
+- Next.js 16 in this repo manages the JSX compiler setting during `next build`; keep `tsconfig.json` aligned with framework-managed output.
 
-## Phase 2 Ideas
+## Next Focus
 
-1. Real-time part pricing and retailer integrations.
-2. Smarter part/build recommendations.
-3. Richer benchmark comparison UX.
-4. Threaded forum discussions and moderation tooling.
-5. Admin content management for guides, parts, and benchmarks.
+1. Milestone 9 production hardening: security review, smoke coverage, CI/CD, observability, and backup/recovery.
+2. Real-time part pricing providers beyond manual/admin-managed offers.
+3. Smarter recommendation and upgrade-planning flows.
+4. Richer benchmark comparison and ingestion workflows.
+5. Broader community depth and notification systems.
