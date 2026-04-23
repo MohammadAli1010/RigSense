@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import type { Role } from "@prisma/client";
+
 import { auth } from "@/auth";
 
 export async function requireUser() {
@@ -9,10 +11,10 @@ export async function requireUser() {
     redirect("/login");
   }
 
-  return session.user as typeof session.user & { id: string; role: string };
+  return session.user as typeof session.user & { id: string; role: Role };
 }
 
-export async function requireRole(allowedRoles: string[]) {
+export async function requireRole(allowedRoles: readonly Role[]) {
   const user = await requireUser();
 
   if (!user.role || !allowedRoles.includes(user.role)) {

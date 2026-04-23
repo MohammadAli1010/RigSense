@@ -1,5 +1,7 @@
 import { compare, hash } from "bcryptjs";
 
+import type { Role } from "@prisma/client";
+
 import { analytics } from "@/lib/analytics";
 import { prisma } from "@/lib/db";
 import { errorReporting } from "@/lib/error-reporting";
@@ -9,7 +11,7 @@ type SessionUser = {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: Role;
 };
 
 export type RegisterUserInput = {
@@ -107,7 +109,7 @@ export async function registerUserAccount({ name, email, password }: RegisterUse
       status: "created",
       user: {
         id: user.id,
-      role: user.role,
+        role: user.role,
         name: user.name,
         email: user.email,
       },

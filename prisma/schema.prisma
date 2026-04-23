@@ -68,8 +68,17 @@ enum JobStatus {
 
 enum Role {
   USER
+  EDITOR
   MODERATOR
   ADMIN
+}
+
+enum FeaturedModuleType {
+  GUIDE
+  PART
+  BUILD
+  BENCHMARK
+  CUSTOM
 }
 
 model User {
@@ -87,6 +96,7 @@ model User {
   votes           AnswerVote[]
   subscriptions   Subscription[]
   reports         Report[]
+  auditLogs       AuditLog[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -356,4 +366,46 @@ model PriceHistory {
   createdAt   DateTime @default(now())
 
   @@index([partId, retrievedAt])
+}
+
+model FeaturedModule {
+  id          String             @id @default(cuid())
+  slot        String
+  type        FeaturedModuleType
+  title       String
+  description String?
+  href        String
+  isActive    Boolean            @default(true)
+  sortOrder   Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([slot, sortOrder])
+  @@index([isActive])
+}
+
+model OperationalSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  summary    String?
+  details    Json?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([createdAt])
 }
