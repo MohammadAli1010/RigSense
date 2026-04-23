@@ -76,3 +76,10 @@ This document tracks the fixes applied to the critical issues outlined in `issue
 - **11. `.env` File Present in Working Tree:** The `.env` file was renamed to `.env.local` and ignored. The weak development secret was replaced.
 - **12. `@types/cheerio` is Deprecated:** Removed from `package.json` and dependencies updated.
 - **14. `user.id` Not Guaranteed on `requireUser` Return Type:** `src/lib/session.ts` was updated to explicitly check `if (!session?.user?.id)` and strictly type the return object.
+
+## Milestone 8: Admin CMS and Data Operations (Started)
+- **Role-Based Access Control (RBAC):** Added `Role` enum to Prisma schema and updated `User` model to have a `role` field defaulting to `USER`. Updated Auth.js configuration (`src/auth.ts`, `src/services/auth/service.ts`, `src/lib/session.ts`) to surface the user role via JWT and session, and added a `requireRole` server helper.
+- **Moderation Queue & Actions:** Built the Moderation Queue dashboard at `/admin/moderation`. Added server actions (`resolveReportAction`, `dismissReportAction`) to review reports, and built the server-side code to enforce the `ForumContentStatus.HIDDEN` state on reported Questions and Answers.
+- **Admin CRUD Dashboards:** Initialized the admin interface via a protected layout `src/app/admin/layout.tsx` and created the catalog management shell at `/admin/parts`.
+
+Note: Ensure `npx prisma migrate dev` is run to apply the `role` enum and User field changes to the local PostgreSQL database!

@@ -9,7 +9,17 @@ export async function requireUser() {
     redirect("/login");
   }
 
-  return session.user as typeof session.user & { id: string };
+  return session.user as typeof session.user & { id: string; role: string };
+}
+
+export async function requireRole(allowedRoles: string[]) {
+  const user = await requireUser();
+
+  if (!user.role || !allowedRoles.includes(user.role)) {
+    redirect("/");
+  }
+
+  return user;
 }
 
 export async function redirectIfAuthenticated() {

@@ -9,6 +9,7 @@ type SessionUser = {
   id: string;
   name: string;
   email: string;
+  role: string;
 };
 
 export type RegisterUserInput = {
@@ -57,6 +58,7 @@ export async function authenticateUserByPassword(email: string, password: string
 
     return {
       id: user.id,
+      role: user.role,
       name: user.name,
       email: user.email,
     } satisfies SessionUser;
@@ -105,6 +107,7 @@ export async function registerUserAccount({ name, email, password }: RegisterUse
       status: "created",
       user: {
         id: user.id,
+      role: user.role,
         name: user.name,
         email: user.email,
       },

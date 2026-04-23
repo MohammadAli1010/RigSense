@@ -4,9 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
-  directUrl         = env("DIRECT_DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 enum PartCategory {
@@ -66,6 +66,12 @@ enum JobStatus {
   FAILED
 }
 
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
 model User {
   id              String          @id @default(cuid())
   name            String
@@ -74,6 +80,7 @@ model User {
   bio             String?
   imageUrl        String?
   reputationScore Int             @default(0)
+  role            Role            @default(USER)
   builds          Build[]
   questions       ForumQuestion[]
   answers         ForumAnswer[]
