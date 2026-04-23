@@ -84,3 +84,5 @@ This document tracks the fixes applied to the critical issues outlined in `issue
 
 Note: Ensure `npx prisma migrate dev` is run to apply the `role` enum and User field changes to the local PostgreSQL database!
 - **Catalog CRUD Dashboards:** Added `Add New Part` and `Edit Part` workflows to the admin panel under `/admin/parts/new` and `/admin/parts/[id]`. These views support parsing names, brands, categories, descriptions, and price values, saving them via the authenticated server action `savePartAction`.
+- **Editorial Dashboards (Guides):** Created `Add Guide` and `Edit Guide` workflows to the admin panel under `/admin/guides/new` and `/admin/guides/[id]`. This allows moderators/admins to manage editorial Markdown content with cover images, generating or customizing guide slugs, via the `saveGuideAction` and `deleteGuideAction`.
+- **Data Operations (Benchmarks):** Created `Add Benchmark` and `Edit Benchmark` workflows under `/admin/benchmarks/new` and `/admin/benchmarks/[id]`. This lets moderators explicitly log and correct benchmark values, associating them to specific `Part` or `Build` records via the `saveBenchmarkAction` and `deleteBenchmarkAction`.

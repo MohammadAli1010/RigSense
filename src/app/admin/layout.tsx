@@ -16,6 +16,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <Link href="/admin/parts" className="block text-slate-300 hover:text-white">
             Catalog Management
           </Link>
+          <Link href="/admin/guides" className="block text-slate-300 hover:text-white">
+            Guides (Editorial)
+          </Link>
+          <Link href="/admin/benchmarks" className="block text-slate-300 hover:text-white">
+            Benchmarks
+          </Link>
         </nav>
       </aside>
       <main className="flex-1 p-8 bg-slate-50">
