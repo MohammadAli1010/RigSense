@@ -83,3 +83,4 @@ This document tracks the fixes applied to the critical issues outlined in `issue
 - **Admin CRUD Dashboards:** Initialized the admin interface via a protected layout `src/app/admin/layout.tsx` and created the catalog management shell at `/admin/parts`.
 
 Note: Ensure `npx prisma migrate dev` is run to apply the `role` enum and User field changes to the local PostgreSQL database!
+- **Catalog CRUD Dashboards:** Added `Add New Part` and `Edit Part` workflows to the admin panel under `/admin/parts/new` and `/admin/parts/[id]`. These views support parsing names, brands, categories, descriptions, and price values, saving them via the authenticated server action `savePartAction`.
