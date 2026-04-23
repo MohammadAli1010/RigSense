@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { type Prisma, PartCategory } from "@prisma/client";
+
+import { createAuditLog, slugify, toAuditJson } from "@/lib/admin";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import { PartCategory } from "@prisma/client";
 
 export async function savePartAction(formData: FormData) {
-  await requireRole(["MODERATOR", "ADMIN"]);
+  const user = await requireRole(["EDITOR", "ADMIN"]);
 
   const id = formData.get("id")?.toString();
   const name = formData.get("name")?.toString().trim();
@@ -15,13 +17,30 @@ export async function savePartAction(formData: FormData) {
   const category = formData.get("category")?.toString() as PartCategory;
   const priceCentsStr = formData.get("priceCents")?.toString();
   const description = formData.get("description")?.toString().trim();
-  
+  const imageUrl = formData.get("imageUrl")?.toString().trim() || null;
+  const specsText = formData.get("specs")?.toString().trim();
+
   if (!name || !brand || !category || !priceCentsStr) {
     throw new Error("Missing required fields");
   }
 
-  const priceCents = parseInt(priceCentsStr, 10);
-  const slug = `${brand}-${name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const priceCents = Number.parseInt(priceCentsStr, 10);
+
+  if (Number.isNaN(priceCents) || priceCents < 0) {
+    throw new Error("Invalid price");
+  }
+
+  let specs: Prisma.InputJsonValue = {};
+
+  if (specsText) {
+    try {
+      specs = JSON.parse(specsText) as Prisma.InputJsonValue;
+    } catch {
+      throw new Error("Specs must be valid JSON");
+    }
+  }
+
+  const slug = slugify(`${brand}-${name}`);
 
   const data = {
     name,
@@ -30,17 +49,44 @@ export async function savePartAction(formData: FormData) {
     category,
     priceCents,
     description: description || null,
-    specs: {}, // Placeholder for now
+    imageUrl,
+    specs,
   };
 
   if (id) {
-    await prisma.part.update({
+    const existingPart = await prisma.part.findUnique({
+      where: { id },
+    });
+
+    if (!existingPart) {
+      throw new Error("Part not found");
+    }
+
+    const updatedPart = await prisma.part.update({
       where: { id },
       data,
     });
+
+    await createAuditLog({
+      actorId: user.id,
+      action: "part.updated",
+      entityType: "part",
+      entityId: updatedPart.id,
+      summary: `Updated part ${updatedPart.brand} ${updatedPart.name}`,
+      details: toAuditJson({ previous: existingPart, next: updatedPart }),
+    });
   } else {
-    await prisma.part.create({
+    const createdPart = await prisma.part.create({
       data,
+    });
+
+    await createAuditLog({
+      actorId: user.id,
+      action: "part.created",
+      entityType: "part",
+      entityId: createdPart.id,
+      summary: `Created part ${createdPart.brand} ${createdPart.name}`,
+      details: toAuditJson({ next: createdPart }),
     });
   }
 
