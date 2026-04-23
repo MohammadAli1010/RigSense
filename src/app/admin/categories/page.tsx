@@ -4,9 +4,16 @@ import Link from "next/link";
 import { deleteCategoryAction } from "@/actions/admin-categories";
 
 export default async function AdminCategoriesPage() {
-  const user = await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN"]);
 
   const categories = await prisma.forumCategory.findMany({
+    include: {
+      _count: {
+        select: {
+          questions: true,
+        },
+      },
+    },
     orderBy: { name: "asc" },
   });
 
@@ -25,6 +32,7 @@ export default async function AdminCategoriesPage() {
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="p-4 font-semibold text-slate-700">Name</th>
               <th className="p-4 font-semibold text-slate-700">Slug</th>
+              <th className="p-4 font-semibold text-slate-700">Questions</th>
               <th className="p-4 font-semibold text-slate-700">Description</th>
               <th className="p-4 font-semibold text-slate-700 text-right">Actions</th>
             </tr>
@@ -32,24 +40,31 @@ export default async function AdminCategoriesPage() {
           <tbody>
             {categories.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-4 text-center text-slate-500">No categories found.</td>
+                <td colSpan={5} className="p-4 text-center text-slate-500">No categories found.</td>
               </tr>
             )}
             {categories.map((cat) => (
               <tr key={cat.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                 <td className="p-4 font-medium text-slate-900">{cat.name}</td>
                 <td className="p-4 text-slate-600 font-mono text-sm">{cat.slug}</td>
+                <td className="p-4 text-slate-600">{cat._count.questions}</td>
                 <td className="p-4 text-slate-600 max-w-sm truncate">{cat.description}</td>
-                <td className="p-4 text-right flex justify-end gap-4">
-                  <Link href={`/admin/categories/${cat.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                    Edit
-                  </Link>
-                  <form action={deleteCategoryAction} onSubmit={(e) => { if (!confirm('Are you sure?')) e.preventDefault(); }}>
-                    <input type="hidden" name="id" value={cat.id} />
-                    <button type="submit" className="text-red-600 hover:text-red-800 font-medium text-sm">
-                      Delete
-                    </button>
-                  </form>
+                <td className="p-4 text-right">
+                  <div className="flex justify-end gap-4">
+                    <Link href={`/admin/categories/${cat.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
+                      Edit
+                    </Link>
+                    {cat._count.questions === 0 ? (
+                      <form action={deleteCategoryAction}>
+                        <input type="hidden" name="id" value={cat.id} />
+                        <button type="submit" className="text-sm font-medium text-red-600 hover:text-red-800">
+                          Delete
+                        </button>
+                      </form>
+                    ) : (
+                      <span className="text-sm text-slate-400">Reassign questions first</span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

@@ -1,11 +1,12 @@
 import { revalidatePath } from "next/cache";
-
-import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/session";
 import { ForumContentStatus, ReportStatus } from "@prisma/client";
 
+import { createAuditLog, toAuditJson } from "@/lib/admin";
+import { prisma } from "@/lib/db";
+import { requireRole } from "@/lib/session";
+
 export async function resolveReportAction(formData: FormData) {
-  await requireRole(["MODERATOR", "ADMIN"]);
+  const user = await requireRole(["MODERATOR", "ADMIN"]);
   const reportId = String(formData.get("reportId") ?? "").trim();
   const hideContent = formData.get("hideContent") === "true";
 
@@ -23,13 +24,11 @@ export async function resolveReportAction(formData: FormData) {
   }
 
   await prisma.$transaction(async (tx) => {
-    // 1. Update report status
     await tx.report.update({
       where: { id: reportId },
       data: { status: ReportStatus.RESOLVED },
     });
 
-    // 2. Optionally hide the content
     if (hideContent) {
       if (report.questionId) {
         await tx.forumQuestion.update({
@@ -44,6 +43,19 @@ export async function resolveReportAction(formData: FormData) {
         });
       }
     }
+
+    await createAuditLog({
+      actorId: user.id,
+      action: hideContent ? "report.resolved-hidden" : "report.resolved-kept",
+      entityType: "report",
+      entityId: report.id,
+      summary: `Resolved report for ${report.questionId ? "question" : "answer"}`,
+      details: toAuditJson({
+        report,
+        hideContent,
+      }),
+      tx,
+    });
   });
 
   revalidatePath("/admin/moderation");
@@ -53,16 +65,25 @@ export async function resolveReportAction(formData: FormData) {
 }
 
 export async function dismissReportAction(formData: FormData) {
-  await requireRole(["MODERATOR", "ADMIN"]);
+  const user = await requireRole(["MODERATOR", "ADMIN"]);
   const reportId = String(formData.get("reportId") ?? "").trim();
 
   if (!reportId) {
     throw new Error("Missing reportId");
   }
 
-  await prisma.report.update({
+  const report = await prisma.report.update({
     where: { id: reportId },
     data: { status: ReportStatus.DISMISSED },
+  });
+
+  await createAuditLog({
+    actorId: user.id,
+    action: "report.dismissed",
+    entityType: "report",
+    entityId: report.id,
+    summary: `Dismissed report ${report.id}`,
+    details: toAuditJson({ report }),
   });
 
   revalidatePath("/admin/moderation");

@@ -10,11 +10,43 @@ export default async function AdminJobsPage() {
     take: 100,
   });
 
+  const statusCounts = jobs.reduce(
+    (acc, job) => {
+      acc[job.status] += 1;
+      return acc;
+    },
+    {
+      PENDING: 0,
+      RUNNING: 0,
+      SUCCEEDED: 0,
+      FAILED: 0,
+    },
+  );
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Background Jobs Dashboard</h1>
         <p className="text-slate-500 mt-2">Operational view for provider health, price scraping, and ingestion runs.</p>
+      </div>
+
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Pending</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{statusCounts.PENDING}</p>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Running</p>
+          <p className="mt-2 text-2xl font-semibold text-blue-700">{statusCounts.RUNNING}</p>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Succeeded</p>
+          <p className="mt-2 text-2xl font-semibold text-green-700">{statusCounts.SUCCEEDED}</p>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Failed</p>
+          <p className="mt-2 text-2xl font-semibold text-red-700">{statusCounts.FAILED}</p>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden border border-slate-200">
@@ -53,17 +85,19 @@ export default async function AdminJobsPage() {
                 <td className="p-4 text-slate-600 max-w-xs truncate text-xs" title={job.lastError || ""}>
                   {job.lastError || "-"}
                 </td>
-                <td className="p-4 text-right flex justify-end gap-3">
-                  {job.status === "FAILED" && (
-                    <form action={retryJobAction}>
+                <td className="p-4 text-right">
+                  <div className="flex justify-end gap-3">
+                    {job.status === "FAILED" && (
+                      <form action={retryJobAction}>
+                        <input type="hidden" name="id" value={job.id} />
+                        <button type="submit" className="font-medium text-blue-600 hover:text-blue-800">Retry</button>
+                      </form>
+                    )}
+                    <form action={deleteJobAction}>
                       <input type="hidden" name="id" value={job.id} />
-                      <button type="submit" className="text-blue-600 hover:text-blue-800 font-medium">Retry</button>
+                      <button type="submit" className="font-medium text-slate-400 hover:text-red-600">Delete</button>
                     </form>
-                  )}
-                  <form action={deleteJobAction} onSubmit={(e) => { if (!confirm('Delete this job?')) e.preventDefault(); }}>
-                    <input type="hidden" name="id" value={job.id} />
-                    <button type="submit" className="text-slate-400 hover:text-red-600 font-medium">Delete</button>
-                  </form>
+                  </div>
                 </td>
               </tr>
             ))}
