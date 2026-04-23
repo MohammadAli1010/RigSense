@@ -416,6 +416,9 @@ export async function getPartDetailData(categoryPath: string, slug: string) {
 export async function getGuidesOverviewData() {
   const dbGuides = await safeQuery(() =>
     prisma.guide.findMany({
+      where: {
+        isPublished: true,
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -427,9 +430,10 @@ export async function getGuidesOverviewData() {
 
 export async function getGuideDetailData(slug: string) {
   const dbGuide = await safeQuery(() =>
-    prisma.guide.findUnique({
+    prisma.guide.findFirst({
       where: {
         slug,
+        isPublished: true,
       },
     }),
   );
@@ -770,4 +774,3 @@ export async function getComparePartsData(slugs: string[]) {
     };
   });
 }
-

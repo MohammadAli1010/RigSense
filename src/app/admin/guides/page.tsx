@@ -4,18 +4,26 @@ import Link from "next/link";
 import { deleteGuideAction } from "@/actions/admin-guides";
 
 export default async function AdminGuidesPage() {
-  const user = await requireRole(["MODERATOR", "ADMIN"]);
+  const user = await requireRole(["EDITOR", "ADMIN"]);
   const isAdmin = user.role === "ADMIN";
 
   const guides = await prisma.guide.findMany({
     orderBy: { createdAt: "desc" },
   });
 
+  const publishedCount = guides.filter((guide) => guide.isPublished).length;
+  const draftCount = guides.length - publishedCount;
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Guides Management</h1>
-        <Link href="/admin/guides/new" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Guides Management</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {publishedCount} published, {draftCount} draft
+          </p>
+        </div>
+        <Link href="/admin/guides/new" className="rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700">
           Write New Guide
         </Link>
       </div>
@@ -51,23 +59,28 @@ export default async function AdminGuidesPage() {
                   )}
                 </td>
                 <td className="p-4 text-slate-600">{new Date(guide.createdAt).toLocaleDateString()}</td>
-                <td className="p-4 text-right flex justify-end gap-4">
+                <td className="p-4 text-right">
+                  <div className="flex justify-end gap-4">
                   {guide.isPublished && (
-                    <Link href={`/guides/${guide.slug}`} target="_blank" className="text-slate-600 hover:text-slate-900 font-medium text-sm">
+                    <Link href={`/guides/${guide.slug}`} target="_blank" className="text-sm font-medium text-slate-600 hover:text-slate-900">
                       View
                     </Link>
                   )}
-                  <Link href={`/admin/guides/${guide.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                  <Link href={`/admin/guides/${guide.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
                     Edit
                   </Link>
+                  <Link href={`/admin/guides/${guide.id}/history`} className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                    History
+                  </Link>
                   {isAdmin && (
-                    <form action={deleteGuideAction} onSubmit={(e) => { if (!confirm('Are you sure?')) e.preventDefault(); }}>
+                    <form action={deleteGuideAction}>
                       <input type="hidden" name="id" value={guide.id} />
-                      <button type="submit" className="text-red-600 hover:text-red-800 font-medium text-sm">
+                      <button type="submit" className="text-sm font-medium text-red-600 hover:text-red-800">
                         Delete
                       </button>
                     </form>
                   )}
+                  </div>
                 </td>
               </tr>
             ))}

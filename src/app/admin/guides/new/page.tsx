@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import Link from "next/link";
 
 export default async function NewGuidePage() {
-  await requireRole(["MODERATOR", "ADMIN"]);
+  await requireRole(["EDITOR", "ADMIN"]);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -47,7 +47,7 @@ export default async function NewGuidePage() {
 
           <div className="flex justify-end gap-4 pt-4 border-t border-slate-100">
             <Link href="/admin/guides" className="px-4 py-2 text-slate-600 hover:text-slate-900 font-medium">Cancel</Link>
-            <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">Publish Guide</button>
+            <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">Save Guide</button>
           </div>
         </form>
       </div>

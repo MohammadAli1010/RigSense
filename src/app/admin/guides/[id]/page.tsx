@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export default async function EditGuidePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole(["MODERATOR", "ADMIN"]);
+  await requireRole(["EDITOR", "ADMIN"]);
   
   const { id } = await params;
   const guide = await prisma.guide.findUnique({
@@ -21,6 +21,9 @@ export default async function EditGuidePage({ params }: { params: Promise<{ id: 
       <div className="flex items-center gap-4 mb-8">
         <Link href="/admin/guides" className="text-slate-500 hover:text-slate-800">&larr; Back to Guides</Link>
         <h1 className="text-3xl font-bold text-slate-900">Edit Guide: {guide.title}</h1>
+        <Link href={`/admin/guides/${guide.id}/history`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
+          View history
+        </Link>
       </div>
 
       <div className="bg-white p-8 rounded-lg shadow border border-slate-200">
