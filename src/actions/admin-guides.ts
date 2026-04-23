@@ -14,6 +14,7 @@ export async function saveGuideAction(formData: FormData) {
   const body = formData.get("body")?.toString().trim();
   const coverImageUrl = formData.get("coverImageUrl")?.toString().trim() || null;
   const slugInput = formData.get("slug")?.toString().trim();
+  const isPublished = formData.get("isPublished") === "on" || formData.get("isPublished") === "true";
   
   if (!title || !excerpt || !body) {
     throw new Error("Missing required fields");
@@ -28,6 +29,7 @@ export async function saveGuideAction(formData: FormData) {
     excerpt,
     body,
     coverImageUrl,
+    isPublished,
   };
 
   if (id) {

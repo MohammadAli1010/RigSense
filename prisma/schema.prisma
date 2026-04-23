@@ -160,6 +160,7 @@ model Guide {
   excerpt       String
   body          String
   coverImageUrl String?
+  isPublished   Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

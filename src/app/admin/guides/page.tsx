@@ -25,7 +25,7 @@ export default async function AdminGuidesPage() {
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="p-4 font-semibold text-slate-700">Title</th>
-              <th className="p-4 font-semibold text-slate-700">Slug</th>
+              <th className="p-4 font-semibold text-slate-700">Status</th>
               <th className="p-4 font-semibold text-slate-700">Created At</th>
               <th className="p-4 font-semibold text-slate-700 text-right">Actions</th>
             </tr>
@@ -39,12 +39,24 @@ export default async function AdminGuidesPage() {
             {guides.map((guide) => (
               <tr key={guide.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                 <td className="p-4 font-medium text-slate-900">{guide.title}</td>
-                <td className="p-4 text-slate-600 font-mono text-sm">{guide.slug}</td>
+                <td className="p-4">
+                  {guide.isPublished ? (
+                    <span className="inline-block px-2 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full">
+                      Published
+                    </span>
+                  ) : (
+                    <span className="inline-block px-2 py-1 text-xs font-semibold bg-slate-100 text-slate-700 rounded-full">
+                      Draft
+                    </span>
+                  )}
+                </td>
                 <td className="p-4 text-slate-600">{new Date(guide.createdAt).toLocaleDateString()}</td>
                 <td className="p-4 text-right flex justify-end gap-4">
-                  <Link href={`/guides/${guide.slug}`} target="_blank" className="text-slate-600 hover:text-slate-900 font-medium text-sm">
-                    View
-                  </Link>
+                  {guide.isPublished && (
+                    <Link href={`/guides/${guide.slug}`} target="_blank" className="text-slate-600 hover:text-slate-900 font-medium text-sm">
+                      View
+                    </Link>
+                  )}
                   <Link href={`/admin/guides/${guide.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
                     Edit
                   </Link>

@@ -40,6 +40,11 @@ export default async function NewGuidePage() {
             <textarea id="body" name="body" rows={12} required className="font-mono text-sm w-full px-3 py-2 border border-slate-300 rounded focus:ring-blue-500 focus:border-blue-500" placeholder="## Introduction\n\nWelcome to the guide..."></textarea>
           </div>
 
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="isPublished" name="isPublished" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded" />
+            <label htmlFor="isPublished" className="text-sm font-medium text-slate-700">Publish this guide immediately</label>
+          </div>
+
           <div className="flex justify-end gap-4 pt-4 border-t border-slate-100">
             <Link href="/admin/guides" className="px-4 py-2 text-slate-600 hover:text-slate-900 font-medium">Cancel</Link>
             <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">Publish Guide</button>
