@@ -4,7 +4,7 @@ import Link from "next/link";
 import { deleteBenchmarkAction } from "@/actions/admin-benchmarks";
 
 export default async function AdminBenchmarksPage() {
-  const user = await requireRole(["MODERATOR", "ADMIN"]);
+  const user = await requireRole(["EDITOR", "ADMIN"]);
   const isAdmin = user.role === "ADMIN";
 
   const benchmarks = await prisma.benchmark.findMany({
@@ -53,18 +53,23 @@ export default async function AdminBenchmarksPage() {
                 <td className="p-4 text-slate-800">
                   {bench.avgFps ? `${bench.avgFps} FPS` : bench.score ? bench.score : "-"}
                 </td>
-                <td className="p-4 text-right flex justify-end gap-4">
-                  <Link href={`/admin/benchmarks/${bench.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                    Edit
-                  </Link>
-                  {isAdmin && (
-                    <form action={deleteBenchmarkAction} onSubmit={(e) => { if (!confirm('Are you sure?')) e.preventDefault(); }}>
-                      <input type="hidden" name="id" value={bench.id} />
-                      <button type="submit" className="text-red-600 hover:text-red-800 font-medium text-sm">
-                        Delete
-                      </button>
-                    </form>
-                  )}
+                <td className="p-4 text-right">
+                  <div className="flex justify-end gap-4">
+                    <Link href={`/admin/benchmarks/${bench.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
+                      Edit
+                    </Link>
+                    <Link href={`/admin/benchmarks/${bench.id}/history`} className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                      History
+                    </Link>
+                    {isAdmin && (
+                      <form action={deleteBenchmarkAction}>
+                        <input type="hidden" name="id" value={bench.id} />
+                        <button type="submit" className="text-sm font-medium text-red-600 hover:text-red-800">
+                          Delete
+                        </button>
+                      </form>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

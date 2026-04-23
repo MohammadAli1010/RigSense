@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 
 export default async function EditBenchmarkPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole(["MODERATOR", "ADMIN"]);
+  await requireRole(["EDITOR", "ADMIN"]);
   
   const { id } = await params;
   const bench = await prisma.benchmark.findUnique({
@@ -22,6 +22,9 @@ export default async function EditBenchmarkPage({ params }: { params: Promise<{ 
       <div className="flex items-center gap-4 mb-8">
         <Link href="/admin/benchmarks" className="text-slate-500 hover:text-slate-800">&larr; Back to Benchmarks</Link>
         <h1 className="text-3xl font-bold text-slate-900">Edit Benchmark</h1>
+        <Link href={`/admin/benchmarks/${bench.id}/history`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
+          View history
+        </Link>
       </div>
 
       <div className="bg-white p-8 rounded-lg shadow border border-slate-200">
@@ -74,6 +77,38 @@ export default async function EditBenchmarkPage({ params }: { params: Promise<{ 
               <label htmlFor="buildId" className="block text-sm font-medium text-slate-700 mb-1">Build ID (Optional)</label>
               <input type="text" id="buildId" name="buildId" defaultValue={bench.buildId || ""} className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-blue-500 focus:border-blue-500" />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="unit" className="block text-sm font-medium text-slate-700 mb-1">Unit (Optional)</label>
+              <input type="text" id="unit" name="unit" defaultValue={bench.unit || ""} className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label htmlFor="scoreType" className="block text-sm font-medium text-slate-700 mb-1">Score Type (Optional)</label>
+              <input type="text" id="scoreType" name="scoreType" defaultValue={bench.scoreType || ""} className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="resolution" className="block text-sm font-medium text-slate-700 mb-1">Resolution (Optional)</label>
+              <input type="text" id="resolution" name="resolution" defaultValue={bench.resolution || ""} className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label htmlFor="confidence" className="block text-sm font-medium text-slate-700 mb-1">Confidence (Optional)</label>
+              <input type="text" id="confidence" name="confidence" defaultValue={bench.confidence || ""} className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="settings" className="block text-sm font-medium text-slate-700 mb-1">Benchmark Settings (Optional)</label>
+            <input type="text" id="settings" name="settings" defaultValue={bench.settings || ""} className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
+          </div>
+
+          <div>
+            <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">Notes (Optional)</label>
+            <textarea id="notes" name="notes" rows={4} defaultValue={bench.notes || ""} className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
           </div>
 
           <div className="flex justify-end gap-4 pt-4 border-t border-slate-100">
