@@ -60,7 +60,7 @@ This document tracks the fixes applied to the critical issues outlined in `issue
 
 ### 22. `jsx` Compiler Option Set to `react-jsx`
 - **Location:** `tsconfig.json`
-- **Fix:** Reverted `"jsx": "react-jsx"` to `"jsx": "preserve"` to align with standard Next.js compilation practices.
+- **Fix:** Verified against `next build`. In this codebase's Next.js 16 toolchain, `next build` reconfigures `tsconfig.json` back to `"jsx": "react-jsx"` as a mandatory setting, so the correct resolution was to keep the framework-managed value and validate that lint, typecheck, tests, and build all pass with it.
 
 ## Final Verification
 - **Linting:** Passed (`npm run lint` / `eslint .`)
@@ -77,12 +77,19 @@ This document tracks the fixes applied to the critical issues outlined in `issue
 - **12. `@types/cheerio` is Deprecated:** Removed from `package.json` and dependencies updated.
 - **14. `user.id` Not Guaranteed on `requireUser` Return Type:** `src/lib/session.ts` was updated to explicitly check `if (!session?.user?.id)` and strictly type the return object.
 
-## Milestone 8: Admin CMS and Data Operations (Started)
-- **Role-Based Access Control (RBAC):** Added `Role` enum to Prisma schema and updated `User` model to have a `role` field defaulting to `USER`. Updated Auth.js configuration (`src/auth.ts`, `src/services/auth/service.ts`, `src/lib/session.ts`) to surface the user role via JWT and session, and added a `requireRole` server helper.
-- **Moderation Queue & Actions:** Built the Moderation Queue dashboard at `/admin/moderation`. Added server actions (`resolveReportAction`, `dismissReportAction`) to review reports, and built the server-side code to enforce the `ForumContentStatus.HIDDEN` state on reported Questions and Answers.
-- **Admin CRUD Dashboards:** Initialized the admin interface via a protected layout `src/app/admin/layout.tsx` and created the catalog management shell at `/admin/parts`.
+## Milestone 8: Admin CMS and Data Operations (Completed)
+- **RBAC completed:** Expanded roles to `USER`, `EDITOR`, `MODERATOR`, and `ADMIN`, propagated the role through Auth.js session/JWT typing, and enforced server-side authorization with `requireRole(...)` across every admin and moderation action.
+- **Catalog/data CRUD completed:** Added protected admin CRUD for `Part`, `Offer`, `Guide`, `Benchmark`, `ForumCategory`, `FeaturedModule`, and `OperationalSetting` records. Catalog correction workflows now support editing structured part JSON specs and manual offer adjustments for provider conflicts or stale data.
+- **Editorial workflow completed:** Added draft/publish support to guides via `Guide.isPublished`, hid draft guides from public guide pages, and added revision history plus rollback flows for both guides and benchmarks using the audit trail.
+- **Moderation workflow completed:** Added the moderation queue, resolution/dismiss actions, enforced hidden-content state changes, and recorded moderation actions in the audit log so enforcement history is reviewable.
+- **Operational visibility completed:** Added the background jobs dashboard with queue/failure summaries and retry controls, plus a dedicated audit log screen for high-impact admin and moderation actions.
+- **Role administration completed:** Added `/admin/users` so admins can assign editor and moderator access without direct database edits.
+- **Auditability completed:** Added `AuditLog` persistence and recording for high-impact actions including content changes, taxonomy changes, operational changes, moderation actions, background job actions, and user role changes.
 
-Note: Ensure `npx prisma migrate dev` is run to apply the `role` enum and User field changes to the local PostgreSQL database!
-- **Catalog CRUD Dashboards:** Added `Add New Part` and `Edit Part` workflows to the admin panel under `/admin/parts/new` and `/admin/parts/[id]`. These views support parsing names, brands, categories, descriptions, and price values, saving them via the authenticated server action `savePartAction`.
-- **Editorial Dashboards (Guides):** Created `Add Guide` and `Edit Guide` workflows to the admin panel under `/admin/guides/new` and `/admin/guides/[id]`. This allows moderators/admins to manage editorial Markdown content with cover images, generating or customizing guide slugs, via the `saveGuideAction` and `deleteGuideAction`.
-- **Data Operations (Benchmarks):** Created `Add Benchmark` and `Edit Benchmark` workflows under `/admin/benchmarks/new` and `/admin/benchmarks/[id]`. This lets moderators explicitly log and correct benchmark values, associating them to specific `Part` or `Build` records via the `saveBenchmarkAction` and `deleteBenchmarkAction`.
+## Milestone 8 Verification
+- **Typecheck:** Passed (`npx tsc --noEmit`)
+- **Lint:** Passed (`npm run lint`)
+- **Tests:** Passed (`npm run test`)
+- **Build:** Passed (`npm run build`)
+
+Note: Prisma schema changes for Milestone 8 are implemented in `prisma/schema.prisma` and the Prisma Client has been regenerated. Applying the schema changes to a local database still requires running a migration or `prisma db push` against PostgreSQL.
