@@ -1,0 +1,59 @@
+name: Smoke Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Start Docker compose
+        run: docker compose up -d --build
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services..."
+          # Simple polling mechanism for the web container port
+          timeout=60
+          until curl -s http://localhost:3000 > /dev/null; do
+            timeout=$((timeout - 1))
+            if [ $timeout -eq 0 ]; then
+              echo "Timeout waiting for rigsense-web to start"
+              docker compose logs
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "Web service is responding!"
+
+      - name: Check essential endpoints
+        run: |
+          endpoints=(
+            "/"
+            "/login"
+            "/register"
+            "/builder"
+            "/benchmarks"
+            "/forum"
+            "/trending"
+          )
+          
+          for endpoint in "${endpoints[@]}"; do
+            echo "Testing $endpoint..."
+            status=$(curl -o /dev/null -s -w "%{http_code}\n" "http://localhost:3000$endpoint")
+            if [ "$status" -ne 200 ]; then
+              echo "Endpoint $endpoint failed with status $status"
+              exit 1
+            fi
+            echo "Endpoint $endpoint OK"
+          done
+          
+      - name: Stop services
+        if: always()
+        run: docker compose down
