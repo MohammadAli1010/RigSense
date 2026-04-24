@@ -4,7 +4,7 @@ RigSense is a custom PC building platform focused on part discovery, private bui
 
 The current codebase includes a production-shaped app shell, credentials-based auth with role-aware admin access, Prisma-backed content and workflow models, protected account routes, public discovery pages, builder flows, community tools, and an internal admin CMS.
 
-Milestones 1-8 are implemented in the codebase. The current app includes the core product plus admin CMS, moderation, and operational tooling, with Milestone 9 focused on final production hardening and launch readiness.
+All roadmap milestones in `milestones.md` are implemented, including Milestone 9 production readiness work such as security hardening, Docker-based production testing, CI workflows, smoke coverage, health checks, error boundaries, and operational documentation.
 
 ## Stack
 
@@ -44,6 +44,13 @@ Implemented now:
   - background job monitoring and retry flows
   - audit log review
   - user role management
+- Production-readiness foundations including:
+  - route protection, security headers, and basic rate limiting via Next.js proxy
+  - Dockerized production-style app and Postgres stack
+  - CI verification and smoke-test GitHub workflows
+  - `/api/health` health check endpoint
+  - global and route-level error boundaries
+  - operations and backup/recovery documentation
 - Public pages for:
   - parts catalog
   - part category pages
@@ -60,14 +67,13 @@ Still intentionally deferred from v1:
 - external pricing providers beyond the current internal/manual offer workflow
 - more advanced recommendation inputs and upgrade-planning logic
 - deeper benchmark ingestion automation and richer compare UX
-- end-to-end smoke coverage and deployment/rollback operations for final launch
-- broader production hardening work from Milestone 9
+- final visual polish, branding, animation, and design refinement
 
 ## Local Setup
 
 ### Prerequisites
 
-- Node.js 22+
+- Node.js 20+
 - npm
 - Docker Desktop or another Docker runtime
 
@@ -103,7 +109,7 @@ Docker-based local development uses Postgres on `localhost:5432`. Older Prisma d
 Option A: Docker-based Postgres
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 
 If you run the app from WSL, enable Docker Desktop WSL integration for this distro so `localhost:5432` is reachable from the workspace shell.
@@ -149,6 +155,124 @@ Demo login after seeding:
 demo@rigsense.dev
 rigsense123
 ```
+
+## How To Test Locally
+
+### Quick functional test in dev mode
+
+Use this flow when you want the fastest feedback while working on UI or product behavior.
+
+1. Start Postgres:
+
+```bash
+docker compose up -d postgres
+```
+
+2. Ensure schema and demo data are loaded:
+
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+```
+
+3. Start the app:
+
+```bash
+npm run dev
+```
+
+4. Open `http://localhost:3000` and verify these public flows:
+
+- `/`
+- `/parts`
+- `/guides`
+- `/benchmarks`
+- `/forum`
+- `/trending`
+
+5. Log in with the seeded account and verify these private flows:
+
+```text
+demo@rigsense.dev
+rigsense123
+```
+
+- `/login`
+- `/profile`
+- `/builder`
+- `/builds`
+
+6. In the builder, verify the main workflow end to end:
+
+- add parts to a build
+- review compatibility output
+- save the build
+- mark it complete if applicable
+- publish or unpublish it
+- open the resulting public build page
+
+7. Verify supporting product flows:
+
+- open `/compare`
+- open a guide and benchmark page
+- create a forum question or answer if you want to exercise the community flow
+- visit `/api/health` and confirm it returns JSON with `status: "ok"`
+
+### Production-style test with Docker
+
+Use this flow when you want to test the app closer to deployment conditions.
+
+1. Build and start the full stack:
+
+```bash
+docker compose up -d --build
+```
+
+2. Open `http://localhost:3000`.
+
+3. Confirm the app responds and the health check works:
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+4. If you need fresh data inside the Docker-backed database, run local seed/migration commands against the same database connection, then restart the web container if needed:
+
+```bash
+npm run db:migrate
+npm run db:seed
+docker compose restart web
+```
+
+5. Inspect logs if something fails:
+
+```bash
+docker compose logs -f web
+docker compose logs -f postgres
+```
+
+### Validation commands
+
+Run the same release gates used by Milestone 9:
+
+```bash
+npm run lint
+npm run test
+npm run typecheck
+npm run build
+```
+
+### What to verify before calling it healthy
+
+- the app loads without server errors
+- `/api/health` returns HTTP 200
+- login works with the seeded account
+- protected routes redirect correctly when logged out
+- admin pages are blocked for non-admin users
+- builder save and publish flows work
+- compare, benchmarks, guides, forum, and public build pages render successfully
+- `lint`, `test`, `typecheck`, and `build` all pass
 
 ## Scripts
 
@@ -231,10 +355,12 @@ compose.yaml
 - Background jobs use the `BackgroundJob` Prisma model and the registry/service under `src/lib/jobs/`.
 - High-impact admin and moderation actions are recorded in the `AuditLog` model and surfaced through `/admin/audit`.
 - Next.js 16 in this repo manages the JSX compiler setting during `next build`; keep `tsconfig.json` aligned with framework-managed output.
+- Production health is exposed through `/api/health`.
+- Production-style local verification is available through `docker compose up -d --build`.
 
 ## Next Focus
 
-1. Milestone 9 production hardening: security review, smoke coverage, CI/CD, observability, and backup/recovery.
+1. Visual polish, branding, motion, and final design refinement.
 2. Real-time part pricing providers beyond manual/admin-managed offers.
 3. Smarter recommendation and upgrade-planning flows.
 4. Richer benchmark comparison and ingestion workflows.
