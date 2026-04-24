@@ -1,4 +1,21 @@
 services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rigsense-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/rigsense?schema=public
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - AUTH_SECRET=supersecret1234567890123456789012 # Use a real secret in prod
+      - NEXT_TELEMETRY_DISABLED=1
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:16-alpine
     container_name: rigsense-postgres
@@ -10,6 +27,11 @@ services:
       - "5432:5432"
     volumes:
       - rigsense-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   rigsense-postgres-data:
